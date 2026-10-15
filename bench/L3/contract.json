@@ -1,0 +1,80 @@
+{
+  "id": "bl-003",
+  "product": "bench",
+  "item": "BL-003",
+  "sources": [
+    {
+      "id": "backlog",
+      "root": "workspace",
+      "path": "BENCH_BACKLOG.md",
+      "section": "BL-003"
+    },
+    {
+      "id": "prd",
+      "root": "workspace",
+      "path": "BENCH_PRD.md",
+      "section": "AC-REL-01"
+    },
+    {
+      "id": "ta",
+      "root": "workspace",
+      "path": "BENCH_TA.md",
+      "section": "§4 ALG-02.1..5 ALG-01 ALG-02"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "bl-003-ac-1",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-1 GIVEN the tags `v1.9.0`, `v1.10.0-rc.1`, `nightly` and `1.10.0`, WHEN `release.Latest` runs, THEN it returns `1.10.0`."
+    },
+    {
+      "id": "bl-003-ac-2",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-2 GIVEN only `v2.0.0-rc.1` and `v2.0.0-rc.2`, WHEN `release.Latest` runs, THEN it returns `v2.0.0-rc.2`."
+    },
+    {
+      "id": "bl-003-ac-3",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-3 GIVEN no tag that parses, WHEN `release.Latest` runs, THEN it returns an error starting with `ERR_NO_RELEASE:`."
+    }
+  ],
+  "constraints": [
+    "Standard library only.",
+    "Bench fixture: L3 of the model bench ladder (F82) — several constraints in one task across two packages: a new package on top of an existing one, which must keep its behaviour.",
+    "`semver` exists and passes ALG-01; extend it (IsCandidate), do not rewrite its behaviour."
+  ],
+  "writable": [
+    "semver/*",
+    "release/*",
+    "tests/bl003ac1_test.go",
+    "tests/bl003ac2_test.go",
+    "tests/bl003ac3_test.go"
+  ],
+  "tasks": [
+    {
+      "id": "author-tests",
+      "phase": "test_authoring",
+      "title": "Author failing tests from BL-003 acceptance criteria",
+      "worker": "stub",
+      "approval": "none"
+    },
+    {
+      "id": "impl",
+      "phase": "implementation",
+      "title": "BL-003 — package `release` (`bench/release`): `Latest(tags []string) (string, error)` per TA ALG-02.1–ALG-02.5, using `semver` (`Compare`, and a new `semver.IsCandidate(s string) bool`); `semver` already implements ALG-01 and keeps that behaviour. Standard library only; plain `testing`.",
+      "worker": "aider",
+      "approval": "none",
+      "writable": [
+        "semver/*",
+        "release/*",
+        "tests/bl003ac1_test.go",
+        "tests/bl003ac2_test.go",
+        "tests/bl003ac3_test.go"
+      ]
+    }
+  ]
+}

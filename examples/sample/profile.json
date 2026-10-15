@@ -1,0 +1,83 @@
+{
+  "profile_version": 1,
+  "product": "BOOKSHELF",
+  "owners": [
+    {
+      "pattern": "API-\\d+|TBL-\\d+|ALG-\\d+(?:\\.\\d+)?|SLO-\\d+|ADR-\\d+",
+      "doc": "TA"
+    },
+    {
+      "pattern": "UXB-\\d+(?:\\.\\d+)?|W-MC-\\d+",
+      "doc": "UX"
+    },
+    {
+      "pattern": "AC-[A-Z]+-\\d+|TC-P[01]-\\d+",
+      "doc": "PRD"
+    },
+    {
+      "pattern": "BK-\\d{3}",
+      "doc": "BACKLOG"
+    }
+  ],
+  "multi_definition_allowed": [
+    "API-"
+  ],
+  "backlog": {
+    "doc": "BACKLOG",
+    "items_section": "## 4.",
+    "item_heading": "^#### ([A-Z]+-\\d{3}) · (.*)$",
+    "outline_row": "^\\| ([A-Z]+-\\d{3}) \\| ([^|]+)\\|",
+    "release_heading": "^### (R\\d+\\.\\d+)\\b",
+    "release_field": "\\*\\*Release\\.\\*\\* (R\\d+\\.\\d+)",
+    "dod_field": "^\\*\\*DoD\\.\\*\\*(.*)$"
+  },
+  "rules_sections": [
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 0."
+    },
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 6."
+    }
+  ],
+  "status": {
+    "doc": "QR",
+    "done": [
+      "🟢"
+    ],
+    "blocked": [
+      "🔴",
+      "⚠️"
+    ],
+    "open": [
+      "⬜"
+    ]
+  },
+  "roadmap": {
+    "doc": "ROADMAP",
+    "milestone_row": "^\\| [^|]*\\| (R\\d+\\.\\d+) "
+  },
+  "table_ddl": {
+    "doc": "TA",
+    "id_prefix": "TBL-"
+  },
+  "context_order": [
+    "PS",
+    "PRD",
+    "TA",
+    "UX",
+    "QR",
+    "BACKLOG",
+    "ROADMAP"
+  ],
+  "consistency": {
+    "route_pattern": "(/api/v1/[a-z_-]+/[\\w/{}.-]*[\\w}])",
+    "route_owner": "TA",
+    "route_shape_in_backlog": "\\b(GET|POST|PATCH|PUT|DELETE) /",
+    "ddl_marker": "CREATE TABLE",
+    "ui_anchor": "[[UX:",
+    "prd_forbidden_row": "^\\|\\s*(GET|POST|PATCH|PUT|DELETE)\\b",
+    "skip_line_marker": "retired"
+  }
+}

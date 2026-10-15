@@ -1,0 +1,77 @@
+#!/bin/sh
+# DUDES Framework — commit-msg hook
+# Enforces: role tag (§13), work-item trailer while an item is bound (F77), branch-role matrix (§12)
+# Install: make hooks (core.hooksPath)
+
+# Match bytes, not characters: under git the hook runs with LC_CTYPE=C.UTF-8, where MSYS sed
+# misses characters outside the basic plane — such as 🔹 — and every commit would be refused.
+LC_ALL=C
+export LC_ALL
+
+MSG=$(cat "$1")
+BRANCH=$(git branch --show-current 2>/dev/null)
+
+# ── 1. Role tag required ────────────────────────────────────────────
+ROLE=$(printf '%s\n' "$MSG" | sed -n 's/.*\(\[🔹[^]]*\]\).*/\1/p' | head -1)
+if [ -z "$ROLE" ]; then
+  echo ""
+  echo "❌ DUDES §13: Missing role tag in commit message."
+  echo "   Required format: <type>(<scope>): <desc> [🔹Role]"
+  echo "   Example: fix(bookshelf): remove unused import [🔹QA Engineer]"
+  echo ""
+  exit 1
+fi
+
+# ── 1b. Work-item trailer (F77) ─────────────────────────────────────
+# While a work item is bound (`# item: <ID>` in .dudes/writable), every commit names it.
+SCOPE="$(git rev-parse --show-toplevel)/.dudes/writable"
+ITEM=""
+[ -f "$SCOPE" ] && ITEM=$(sed -n 's/^# item: *//p' "$SCOPE" | head -1)
+if [ -n "$ITEM" ] && ! printf '%s\n' "$MSG" | grep -qxF "Item: $ITEM"; then
+  echo ""
+  echo "❌ DUDES F77: work item $ITEM is bound, but the commit does not name it."
+  echo "   Add the trailer line:  Item: $ITEM"
+  echo ""
+  exit 1
+fi
+
+# ── 2. Branch-role matrix (§12) ─────────────────────────────────────
+case "$BRANCH" in
+  release/*)
+    # Spec repo (a *_PRD.md at its root): the branch is the frozen spec — only QA, only the QR.
+    # Dev repo: release/<product>-vX.Y is the patch line — every role may commit there.
+    git ls-files ':(glob)*_PRD.md' | grep -q . || exit 0
+    case "$ROLE" in
+      *"QA Engineer"*) ;; # allowed
+      *)
+        echo ""
+        echo "❌ DUDES §12: Role $ROLE cannot commit on the frozen spec branch $BRANCH."
+        echo "   Only [🔹QA Engineer] may commit here, and only the QR."
+        echo "   Fix: commit spec changes on development — they reach the next line."
+        echo ""
+        exit 1
+        ;;
+    esac
+    OTHER=$(git diff --cached --name-only | grep -v '_QR\.md$')
+    if [ -n "$OTHER" ]; then
+      echo ""
+      echo "❌ DUDES §12: $BRANCH is the frozen spec — only *_QR.md may change. Staged besides the QR:"
+      printf '%s\n' "$OTHER" | sed 's/^/   /'
+      echo "   Fix: commit them on development — they reach the next line."
+      echo ""
+      exit 1
+    fi
+    ;;
+  development|main)
+    # QR commits must go on release branches, not development
+    if echo "$MSG" | grep -qiE '(QR|quality.report)' && echo "$ROLE" | grep -q "QA Engineer"; then
+      echo ""
+      echo "❌ DUDES §12: QR artifacts belong on release/* branch, not $BRANCH."
+      echo "   Fix: git checkout release/<product>-v<X.Y>, then commit."
+      echo ""
+      exit 1
+    fi
+    ;;
+esac
+
+exit 0

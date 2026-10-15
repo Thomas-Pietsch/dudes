@@ -1,0 +1,7 @@
+{
+  "phase": "idea",
+  "worker": "ollama",
+  "instructions": "Write a one-paragraph idea capture: title, problem, one proposed direction. Stay under 120 words.",
+  "tools": ["none"],
+  "pack": false
+}

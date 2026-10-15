@@ -1,0 +1,119 @@
+{
+  "id": "bk-001",
+  "product": "bookshelf",
+  "variant": "standard",
+  "item": "BK-001",
+  "sources": [
+    {
+      "id": "backlog",
+      "root": "pm",
+      "path": "BOOKSHELF_BACKLOG.md",
+      "section": "BK-001"
+    },
+    {
+      "id": "prd",
+      "root": "pm",
+      "path": "BOOKSHELF_PRD.md",
+      "section": "AC-SHELF-01 AC-SHELF-03"
+    },
+    {
+      "id": "ta",
+      "root": "pm",
+      "path": "BOOKSHELF_TA.md",
+      "section": "§3 API-01 API-03 TBL-01 ALG-01.1..2 ALG-01.2 ALG-01"
+    },
+    {
+      "id": "ux",
+      "root": "pm",
+      "path": "ux/BOOKSHELF_UX.md",
+      "section": "UXB-01.2 W-MC-01..03 W-MC-03"
+    },
+    {
+      "id": "ps",
+      "root": "lead",
+      "path": "BOOKSHELF_PS.md",
+      "section": "§3"
+    }
+  ],
+  "constraints": [
+    "This increment is BK-001 only. Do not implement BK-002.",
+    "The form of BK-001 FR-3 is a later slice: write no UI.",
+    "Do not rename spec documents.",
+    "Field hypotheses are not software test gates.",
+    "`tests/` cannot import `bookshelf/internal/...` (Go internal rule): acceptance tests in `tests/` drive the built service over HTTP; tests that need internal packages live beside them as package tests.",
+    "`go test` runs each package in its own directory: inside `tests/`, the repository root is `..`, never `tests/...` or `bookshelf/...` relative to the working directory."
+  ],
+  "writable": [
+    "bookshelf/*",
+    "tests/*",
+    "go.mod"
+  ],
+  "acceptance": [
+    {
+      "id": "bk-001-ac-1",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-1 GIVEN an empty shelf, WHEN `Sample Book` by `Sample Author` is added through [[TA:API-01]], THEN the response is `201` and the listing of [[TA:API-03]] shows one unread book."
+    },
+    {
+      "id": "bk-001-ac-2",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-2 GIVEN a shelf with two books, WHEN a third is added, THEN it is listed last ([[TA:ALG-01.2]])."
+    },
+    {
+      "id": "bk-001-ac-3",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-3 GIVEN an empty title, WHEN a book is added through [[TA:API-01]], THEN the shelf is unchanged and the error message is „Der Titel fehlt oder ist zu lang.“ ([[UX:W-MC-03]])."
+    },
+    {
+      "id": "add-in-10s",
+      "source": "ps",
+      "kind": "field",
+      "text": "A reader adds a book in under ten seconds — a field hypothesis, measured with readers, not a CI gate for BK-001."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "author-tests",
+      "phase": "test_authoring",
+      "title": "Author failing tests from BK-001 AC-1…AC-3 only",
+      "skills": ["tdd"],
+      "worker": "stub",
+      "approval": "none"
+    },
+    {
+      "id": "test-add",
+      "phase": "implementation",
+      "title": "BK-001 slice 1 of 2, red first — the acceptance tests of the service (AC-1, AC-2, AC-3), not the code. `TestBK001AC1`: adding `Sample Book` by `Sample Author` answers `201` and the listing shows one unread book. `TestBK001AC2`: a third book is listed last. `TestBK001AC3`: an empty title is refused with `400 ERR_TITLE`, its message is the text of W-MC-03, and the shelf is unchanged. Each test builds the service once (`go build -o <temp dir>/bookshelf<exe> bookshelf/cmd/bookshelf`, `<exe>` = `.exe` when `runtime.GOOS` is windows; `go test` runs inside `tests/`), starts it with `--addr 127.0.0.1:<free port>` and `--db <temp file>` and talks to it over HTTP; it fails with the build output while the service does not build. Plain `testing` and the standard library only. The next task writes the code and cannot change these tests.",
+      "worker": "aider",
+      "approval": "after",
+      "expect": "fail",
+      "tools": ["go.mod"],
+      "refs": ["TA:§3", "TA:API-01", "TA:API-03", "TA:ALG-01", "UX:W-MC-03"],
+      "test": ["go", "test", "./tests/...", "./bookshelf/..."],
+      "writable": ["tests/bk001ac1_test.go", "tests/bk001ac2_test.go", "tests/bk001ac3_test.go"]
+    },
+    {
+      "id": "impl-add",
+      "phase": "implementation",
+      "title": "BK-001 slice 1 of 2 — the code: `tests/bk001ac1_test.go`, `tests/bk001ac2_test.go` and `tests/bk001ac3_test.go` are written and read-only — make them pass. Write `bookshelf/cmd/bookshelf` and `bookshelf/internal/shelf` after TA §3, API-01, API-03, TBL-01 and ALG-01. Standard library and `modernc.org/sqlite` only; the module files are the engine's, not the worker's.",
+      "skills": ["tdd", "codebase-design"],
+      "worker": "aider",
+      "approval": "after",
+      "tools": ["go.mod"],
+      "refs": ["TA:§3", "TA:API-01", "TA:API-03", "TA:TBL-01", "TA:ALG-01"],
+      "test": ["go", "test", "./tests/...", "./bookshelf/..."],
+      "writable": ["bookshelf/*"]
+    },
+    {
+      "id": "qa-review",
+      "phase": "qa",
+      "title": "QR from requirement → test → run evidence; keep the field row open",
+      "skills": ["code-review"],
+      "worker": "ollama",
+      "approval": "none"
+    }
+  ]
+}

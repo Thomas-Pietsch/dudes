@@ -1,0 +1,77 @@
+{
+  "id": "bl-002",
+  "product": "bench",
+  "item": "BL-002",
+  "sources": [
+    {
+      "id": "backlog",
+      "root": "workspace",
+      "path": "BENCH_BACKLOG.md",
+      "section": "BL-002"
+    },
+    {
+      "id": "prd",
+      "root": "workspace",
+      "path": "BENCH_PRD.md",
+      "section": "AC-VER-01"
+    },
+    {
+      "id": "ta",
+      "root": "workspace",
+      "path": "BENCH_TA.md",
+      "section": "§3 ALG-01.1..4 ALG-01"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "bl-002-ac-1",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-1 GIVEN `v1.10.0` and `1.9.3`, WHEN `semver.Compare` runs, THEN it returns 1."
+    },
+    {
+      "id": "bl-002-ac-2",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-2 GIVEN `1.2.0-rc.2`, `1.2.0-rc.10` and `1.2.0`, WHEN they are compared pairwise, THEN each sorts before the next."
+    },
+    {
+      "id": "bl-002-ac-3",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-3 GIVEN `1.x.0`, WHEN `semver.Parse` runs, THEN it returns an error starting with `ERR_VERSION:` that quotes `1.x.0`."
+    }
+  ],
+  "constraints": [
+    "Standard library only.",
+    "Bench fixture: L2 of the model bench ladder (F82) — a package whose behaviour is defined by a TA reference (ALG-01)."
+  ],
+  "writable": [
+    "semver/*",
+    "tests/bl002ac1_test.go",
+    "tests/bl002ac2_test.go",
+    "tests/bl002ac3_test.go"
+  ],
+  "tasks": [
+    {
+      "id": "author-tests",
+      "phase": "test_authoring",
+      "title": "Author failing tests from BL-002 acceptance criteria",
+      "worker": "stub",
+      "approval": "none"
+    },
+    {
+      "id": "impl",
+      "phase": "implementation",
+      "title": "BL-002 — package `semver` (`bench/semver`): `Parse(s string) (Version, error)` and `Compare(a, b string) (int, error)` implementing TA ALG-01.1–ALG-01.4 from the item pack. Standard library only; plain `testing`.",
+      "worker": "aider",
+      "approval": "none",
+      "writable": [
+        "semver/*",
+        "tests/bl002ac1_test.go",
+        "tests/bl002ac2_test.go",
+        "tests/bl002ac3_test.go"
+      ]
+    }
+  ]
+}

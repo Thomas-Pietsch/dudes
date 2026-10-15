@@ -1,0 +1,61 @@
+{
+  "id": "bl-001",
+  "product": "bench",
+  "item": "BL-001",
+  "sources": [
+    {
+      "id": "backlog",
+      "root": "workspace",
+      "path": "BENCH_BACKLOG.md",
+      "section": "BL-001"
+    },
+    {
+      "id": "prd",
+      "root": "workspace",
+      "path": "BENCH_PRD.md",
+      "section": "AC-SLUG-01"
+    },
+    {
+      "id": "ta",
+      "root": "workspace",
+      "path": "BENCH_TA.md",
+      "section": "§3"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "bl-001-ac-1",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-1 GIVEN the titles `Hello, World!`, `  Go 1.26  `, `a--b` and `!!!`, WHEN `slug.Make` runs on each, THEN it returns `hello-world`, `go-1-26`, `a-b` and the empty string."
+    }
+  ],
+  "constraints": [
+    "Standard library only.",
+    "Bench fixture: L1 of the model bench ladder (F82) — one package file from one acceptance criterion."
+  ],
+  "writable": [
+    "slug/*",
+    "tests/bl001ac1_test.go"
+  ],
+  "tasks": [
+    {
+      "id": "author-tests",
+      "phase": "test_authoring",
+      "title": "Author failing tests from BL-001 acceptance criteria",
+      "worker": "stub",
+      "approval": "none"
+    },
+    {
+      "id": "impl",
+      "phase": "implementation",
+      "title": "BL-001 — package `slug` (`bench/slug`): `Make(title string) string` per the item's acceptance criterion. Standard library only; plain `testing`.",
+      "worker": "aider",
+      "approval": "none",
+      "writable": [
+        "slug/*",
+        "tests/bl001ac1_test.go"
+      ]
+    }
+  ]
+}

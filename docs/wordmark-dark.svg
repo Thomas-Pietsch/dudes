@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120" role="img" aria-labelledby="t">
+  <title id="t">dudes — Agents deliver. You seal.</title>
+  <g transform="translate(0,0)">
+    <path d="M110.0 60.0 Q118.1 70.2 107.0 77.1 Q111.1 89.5 98.3 92.1 Q97.9 105.2 85.0 103.3 Q80.2 115.4 68.7 109.2 Q60.0 119.0 51.3 109.2 Q39.8 115.4 35.0 103.3 Q22.1 105.2 21.7 92.1 Q8.9 89.5 13.0 77.1 Q1.9 70.2 10.0 60.0 Q1.9 49.8 13.0 42.9 Q8.9 30.5 21.7 27.9 Q22.1 14.8 35.0 16.7 Q39.8 4.6 51.3 10.8 Q60.0 1.0 68.7 10.8 Q80.2 4.6 85.0 16.7 Q97.9 14.8 98.3 27.9 Q111.1 30.5 107.0 42.9 Q118.1 49.8 110.0 60.0 Z" fill="#D9412B"/>
+    <circle cx="60" cy="60" r="40" fill="none" stroke="#F6F3EC" stroke-width="2.5" stroke-dasharray="3 4" opacity="0.85"/>
+    <path d="M47 34 V78" fill="none" stroke="#F6F3EC" stroke-width="7" stroke-linecap="round"/>
+    <path d="M47 34 C 90 34, 90 84, 53 84" fill="none" stroke="#F6F3EC" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="47" cy="34" r="5.5" fill="#F6F3EC"/>
+    <circle cx="47" cy="84" r="9" fill="#F6F3EC"/>
+    <circle cx="47" cy="84" r="4" fill="#D9412B"/>
+  </g>
+  <text x="135" y="72" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="56" font-weight="700" fill="#F6F3EC">dudes</text>
+  <text x="137" y="100" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" fill="#F6F3EC">Agents deliver. You seal.</text>
+</svg>

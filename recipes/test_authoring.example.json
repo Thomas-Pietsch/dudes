@@ -1,0 +1,9 @@
+{
+  "phase": "test_authoring",
+  "worker": "stub",
+  "instructions": "The engine authors tests from the frozen PRD (Go, not the model). This recipe only injects TDD discipline if a text worker is used.",
+  "tools": [
+    "none"
+  ],
+  "pack": false
+}

@@ -1,0 +1,131 @@
+{
+  "schema": "context-pack/1",
+  "generator": "context_pack 1.0.0",
+  "generated": "2026-10-05",
+  "product": "DEMO",
+  "item": "DM-001",
+  "title": "Save a note with author",
+  "release": "R0.1",
+  "status": "open",
+  "dod": [
+    "TC-P0-01",
+    "AC-NOTE-01",
+    "AC-NOTE-02",
+    "TC-SEC-01",
+    "TC-SEC-ATTR-01",
+    "TC-SEC-13"
+  ],
+  "dod_missing": [],
+  "budget": 500,
+  "over_budget": true,
+  "sizes": {
+    "RULES.md": 486,
+    "TASK.md": 988,
+    "CONTEXT.md": 3371,
+    "PACK.md": 4849
+  },
+  "references": [
+    {
+      "ref": "[[TA:API-01]]",
+      "doc": "TA",
+      "id": "API-01",
+      "trimmed": true,
+      "chars": 302
+    },
+    {
+      "ref": "[[TA:TBL-01]]",
+      "doc": "TA",
+      "id": "TBL-01",
+      "trimmed": true,
+      "chars": 375
+    },
+    {
+      "ref": "[[TA:ALG-01.1..2]]",
+      "doc": "TA",
+      "id": "ALG-01.1..2",
+      "trimmed": true,
+      "chars": 222
+    },
+    {
+      "ref": "[[UX:UXB-01.1]]",
+      "doc": "UX",
+      "id": "UXB-01.1",
+      "trimmed": true,
+      "chars": 140
+    },
+    {
+      "ref": "[[UX:W-MC-01..03]]",
+      "doc": "UX",
+      "id": "W-MC-01..03",
+      "trimmed": true,
+      "chars": 253
+    },
+    {
+      "ref": "[[SC:T-DM-01]]",
+      "doc": "SC",
+      "id": "T-DM-01",
+      "trimmed": true,
+      "chars": 224
+    },
+    {
+      "ref": "[[PS:§14.7]]",
+      "doc": "PS",
+      "id": "§14.7",
+      "trimmed": true,
+      "chars": 176
+    },
+    {
+      "ref": "[[UX:W-MC-03]]",
+      "doc": "UX",
+      "id": "W-MC-03",
+      "trimmed": true,
+      "chars": 162
+    },
+    {
+      "ref": "[[PRD:AC-NOTE-01..02]]",
+      "doc": "PRD",
+      "id": "AC-NOTE-01..02",
+      "trimmed": true,
+      "chars": 267
+    },
+    {
+      "ref": "[[PRD:AC-PRIV-01]]",
+      "doc": "PRD",
+      "id": "AC-PRIV-01",
+      "trimmed": true,
+      "chars": 178
+    },
+    {
+      "ref": "[[PRD:§6]]",
+      "doc": "PRD",
+      "id": "§6",
+      "trimmed": true,
+      "chars": 294
+    },
+    {
+      "ref": "[[TA:SLO-01]]",
+      "doc": "TA",
+      "id": "SLO-01",
+      "trimmed": true,
+      "chars": 135
+    },
+    {
+      "ref": "[[SC:TC-SEC-ATTR-01]]",
+      "doc": "SC",
+      "id": "TC-SEC-ATTR-01",
+      "trimmed": true,
+      "chars": 190
+    }
+  ],
+  "sources": {
+    "STRATEGY.md": "9b7937050cceb022ee6b1663067e1358c48ff9856f98fafe2cd71b3199e3a695",
+    "DEMO_PS.md": "c681510bfe489e5bacecdf56e4f638ffb1018f33dd4b2649238b5c63d6603b4d",
+    "DEMO_PRD.md": "e2d20cab17719cc2b2d576454ec73acb09252527537c50a14b5e7155652f20e0",
+    "DEMO_TA.md": "299eb932e9104974bbbdb45c14abf5619b91d8a5118cf61d05b3d42664defbea",
+    "DEMO_UX.md": "b27d5aedf4ff7810791d4f9f99ed56f3457b0fe6687be929bfd05763475aafed",
+    "DEMO_ROADMAP.md": "58ef8d0dea7ad5104bbc576d5e8adb08597532cb6d24a033db9701693deb7ecb",
+    "DEMO_BACKLOG.md": "9cdc0ce1b21a48aa9fb04f228aa948022a0d49c78a013bade3d970a8410ff01a",
+    "DEMO_SC.md": "cf36d12bafd2b828ec60354d55d330e945132c723a377895e6b2578d86d33d77",
+    "DEMO_QR.md": "07fffa5e98754617ee029d1011306dd3cafd8c636ba009d8b33ce84611ae41b0"
+  }
+}

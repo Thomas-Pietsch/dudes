@@ -1,0 +1,39 @@
+{
+  "workspace": ".",
+  "product": "demo",
+  "ollama": {
+    "base_url": "http://127.0.0.1:11434",
+    "model": "qwen2.5-coder:7b",
+    "timeout_sec": 600
+  },
+  "aider": {
+    "bin": "aider",
+    "model": "ollama/qwen2.5-coder:7b",
+    "timeout_sec": 1800
+  },
+  "packer": {
+    "bin": "repomix",
+    "output": ".dudes/context_pack.md",
+    "timeout_sec": 120,
+    "compress": true
+  },
+  "pi": {
+    "bin": "pi",
+    "timeout_sec": 1800
+  },
+  "worktree": false,
+  "test_command": [
+    "go",
+    "test",
+    "-v",
+    "./..."
+  ],
+  "context_budget": 0,
+  "convergence": {
+    "enabled": false,
+    "max_passes": 5
+  },
+  "seal": {
+    "require_signature": false
+  }
+}

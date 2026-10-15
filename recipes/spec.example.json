@@ -1,0 +1,9 @@
+{
+  "phase": "spec",
+  "worker": "ollama",
+  "instructions": "Write a PRD as a machine-checkable contract: ### Requirement: <short-id>, a SHALL sentence, then #### Scenario: with GIVEN / WHEN / THEN. At least one pair.",
+  "tools": [
+    "none"
+  ],
+  "pack": false
+}

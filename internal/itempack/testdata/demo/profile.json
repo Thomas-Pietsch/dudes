@@ -1,0 +1,114 @@
+{
+  "profile_version": 1,
+  "product": "DEMO",
+  "documents": {
+    "STRATEGY": "STRATEGY.md",
+    "PS": "{product}_PS.md",
+    "BM": "{product}_BM.md",
+    "PRD": "{product}_PRD.md",
+    "TA": "{product}_TA.md",
+    "UX": "{product}_UX.md",
+    "ROADMAP": "{product}_ROADMAP.md",
+    "BACKLOG": "{product}_BACKLOG.md",
+    "SC": "{product}_SC.md",
+    "QR": "{product}_QR.md"
+  },
+  "shared_documents": [
+    "STRATEGY"
+  ],
+  "owners": [
+    {
+      "pattern": "TC-SEC-(?:1[3-9]|[2-9]\\d)",
+      "doc": "SC",
+      "note": "narrow exception first: SC extends the PRD base TC-SEC-01..12"
+    },
+    {
+      "pattern": "API-\\d+|TBL-\\d+|ALG-\\d+(?:\\.\\d+)?|SLO-\\d+|ADR-\\d+",
+      "doc": "TA"
+    },
+    {
+      "pattern": "UXB-\\d+(?:\\.\\d+)?|W-MC-\\d+",
+      "doc": "UX"
+    },
+    {
+      "pattern": "AC-[A-Z]+-\\d+|TC-P[01]-\\d+|TC-SEC-\\d+",
+      "doc": "PRD"
+    },
+    {
+      "pattern": "T-DM-\\d+|TC-SEC-[A-Z]+-\\d+",
+      "doc": "SC"
+    },
+    {
+      "pattern": "DM-\\d{3}",
+      "doc": "BACKLOG"
+    }
+  ],
+  "multi_definition_allowed": [
+    "API-"
+  ],
+  "backlog": {
+    "doc": "BACKLOG",
+    "items_section": "## 4.",
+    "item_heading": "^#### ([A-Z]+-\\d{3}) · (.*)$",
+    "outline_row": "^\\| ([A-Z]+-\\d{3}) \\| ([^|]+)\\|",
+    "release_heading": "^### (R\\d+\\.\\d+)\\b",
+    "release_field": "\\*\\*Release\\.\\*\\* (R\\d+\\.\\d+)",
+    "dod_field": "^\\*\\*DoD\\.\\*\\*(.*)$"
+  },
+  "rules_sections": [
+    {
+      "doc": "STRATEGY",
+      "heading_prefix": "#### H.6 "
+    },
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 0."
+    },
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 6."
+    }
+  ],
+  "status": {
+    "doc": "QR",
+    "done": [
+      "🟢"
+    ],
+    "blocked": [
+      "🔴",
+      "⚠️"
+    ],
+    "open": [
+      "⬜"
+    ]
+  },
+  "roadmap": {
+    "doc": "ROADMAP",
+    "milestone_row": "^\\| [^|]*\\| (R\\d+\\.\\d+) "
+  },
+  "table_ddl": {
+    "doc": "TA",
+    "id_prefix": "TBL-"
+  },
+  "context_order": [
+    "PS",
+    "PRD",
+    "TA",
+    "UX",
+    "SC",
+    "QR",
+    "BACKLOG",
+    "ROADMAP",
+    "STRATEGY"
+  ],
+  "consistency": {
+    "route_pattern": "(/api/v1/[a-z_-]+/[\\w/{}.-]*[\\w}])",
+    "route_owner": "TA",
+    "route_shape_in_backlog": "\\b(GET|POST|PATCH|PUT|DELETE) /",
+    "ddl_marker": "CREATE TABLE",
+    "ui_anchor": "[[UX:",
+    "prd_forbidden_row": "^\\|\\s*(GET|POST|PATCH|PUT|DELETE)\\b",
+    "skip_line_marker": "retired"
+  },
+  "_comment": "BM is listed on purpose but has no file in the fixtures: a listed document may be absent; referencing it is a C1 finding."
+}

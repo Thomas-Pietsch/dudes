@@ -1,0 +1,68 @@
+#!/bin/sh
+# DUDES Framework — pre-commit hook
+# Enforces:
+#   1. documents state the current truth — no new change-note blocks (`> **Propagation …`) in
+#      Markdown; the why goes in the commit message (DUDES §violations). Removing old ones is fine.
+#      A QR states the current run only: no new run-history rows (rules/TESTING.md).
+#   2. a commit stays inside the current work item's writable paths (F78, CORE §6).
+#      Scope: .dudes/writable in the work tree — one path pattern per line, `#` comments allowed.
+#      Shell patterns: `*` also matches `/`, so `app/*` covers everything below it.
+#      A line `!pattern` excludes: what it matches is refused even inside another pattern (the
+#      tests and hooks a red-first task wrote stay read-only for the code task, F88); with only
+#      exclusions, everything else is allowed.
+#      Written when a work item is bound; no file = no active scope = nothing to check.
+# Install: make hooks (core.hooksPath)
+LC_ALL=C
+export LC_ALL
+
+NOTES=$(git diff --cached -U0 -- '*.md' | grep -E '^\+> \*\*Propagation')
+if [ -n "$NOTES" ]; then
+  echo ""
+  echo "❌ DUDES: new change-note blocks in Markdown — documents state the current truth:"
+  printf '%s\n' "$NOTES" | cut -c1-110 | sed 's/^+/   /'
+  echo "   Fix: write the current state into the document; put the why in the commit message."
+  echo ""
+  exit 1
+fi
+
+# QR = the current run only (rules/TESTING.md): no new rows of a run-history table — each run is
+# one QR commit, `git log` of the QR is the history.
+RUNS=$(git diff --cached -U0 -- '*_QR.md' | grep -E '^\+\|[[:space:]]*20[0-9]{2}-[0-9]{2}-[0-9]{2}[[:space:]]*\|.*[Rr]un[[:space:]]+[0-9]+')
+if [ -n "$RUNS" ]; then
+  echo ""
+  echo "❌ DUDES: new run-history rows in a QR — the QR states the current run only:"
+  printf '%s\n' "$RUNS" | cut -c1-110 | sed 's/^+/   /'
+  echo "   Fix: update verdict, verified commit and matrix in place; git log of the QR is the history."
+  echo ""
+  exit 1
+fi
+
+SCOPE="$(git rev-parse --show-toplevel)/.dudes/writable"
+[ -f "$SCOPE" ] || exit 0
+grep -q '^[^#]' "$SCOPE" || exit 0   # only comments (e.g. `# item:`) = no path scope
+
+git diff --cached --name-only | {
+  bad=0
+  while IFS= read -r path; do
+    inside=1 excluded=1 positive=0
+    while IFS= read -r pat; do
+      case "$pat" in
+        ''|'#'*) continue ;;
+        '!'*) ex=${pat#?}; case "$path" in $ex) excluded=0 ;; esac ;;
+        *) positive=1; case "$path" in $pat) inside=0 ;; esac ;;
+      esac
+    done < "$SCOPE"
+    [ "$positive" -eq 0 ] && inside=0 # only exclusions: everything else is inside
+    if [ "$inside" -ne 0 ] || [ "$excluded" -eq 0 ]; then
+      [ "$bad" -eq 0 ] && { echo ""; echo "❌ DUDES F78: staged paths outside the work item's writable paths (.dudes/writable):"; }
+      echo "   $path"
+      bad=1
+    fi
+  done
+  if [ "$bad" -ne 0 ]; then
+    echo "   Fix: unstage them. If the work item really needs them, that is a spec question"
+    echo "   (worker: BLOCKED:), not a wider scope."
+    echo ""
+  fi
+  exit "$bad"
+}

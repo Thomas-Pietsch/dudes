@@ -1,0 +1,81 @@
+name: Bench result
+description: Share the result lines of make bench-models from your machine
+title: "bench: <model> on <hardware>"
+labels: ["bench"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for running the bench. Failures are as welcome as passes. The short path is
+        [Your 27B in 10 minutes](https://github.com/Thomas-Pietsch/dudes/blob/HEAD/docs/LOCAL_LLM_GUIDE.md).
+        This form is how a result reaches the project: do not push git notes anywhere.
+
+        **A result line has this shape** (the bench prints one per run):
+
+        ```text
+        <date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> host=<label> edit=<whole|diff>
+        ```
+
+        `outcome` is `pass`, `weak`, `fail` or `blocked`. The levels and the fields are explained in
+        [bench/README.md](https://github.com/Thomas-Pietsch/dudes/blob/HEAD/bench/README.md).
+  - type: textarea
+    id: result-lines
+    attributes:
+      label: Result lines
+      description: >-
+        Paste the lines exactly as printed, or from `.dudes/bench-models/<stamp>-results.txt`.
+        Replace the URL after `host=` with a short label of your machine. This issue is public.
+      placeholder: "<one line per run, in the shape above>"
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: quantization
+    attributes:
+      label: Quantization
+      description: "`ollama show <tag>` prints it. The tag alone does not say which quantization you pulled."
+      placeholder: "Q4_K_M"
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware of the model host
+      description: The GPU and its memory, or the machine and its RAM if the model runs on the CPU.
+      placeholder: "<GPU>, <memory> GB"
+    validations:
+      required: true
+  - type: input
+    id: ollama
+    attributes:
+      label: Ollama version
+      description: "`ollama --version`"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where the bench ran
+      options:
+        - Linux
+        - macOS
+        - Windows (Git Bash, Docker Engine in WSL2)
+        - Windows (other)
+        - Other
+  - type: input
+    id: settings
+    attributes:
+      label: Settings you changed
+      description: LEVELS, REPS, STEPS, EDIT_FORMAT, or a level's NUM_CTX. Leave empty for the defaults.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything odd
+      description: A run that hung, a model that needed another context, a step that surprised you.
+  - type: checkboxes
+    id: public
+    attributes:
+      label: Before you submit
+      options:
+        - label: I replaced the URL after `host=` with a label of my machine (this issue is public).
+          required: true

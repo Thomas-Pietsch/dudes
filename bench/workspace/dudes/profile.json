@@ -1,0 +1,66 @@
+{
+  "profile_version": 1,
+  "product": "BENCH",
+  "documents": {
+    "PRD": "{product}_PRD.md",
+    "TA": "{product}_TA.md",
+    "BACKLOG": "{product}_BACKLOG.md",
+    "QR": "{product}_QR.md",
+    "ROADMAP": "{product}_ROADMAP.md"
+  },
+  "owners": [
+    {
+      "pattern": "ALG-\\d+(?:\\.\\d+)?",
+      "doc": "TA"
+    },
+    {
+      "pattern": "AC-[A-Z]+-\\d+",
+      "doc": "PRD"
+    },
+    {
+      "pattern": "BL-\\d{3}",
+      "doc": "BACKLOG"
+    }
+  ],
+  "backlog": {
+    "doc": "BACKLOG",
+    "items_section": "## 4.",
+    "item_heading": "^#### ([A-Z]+-\\d{3}) · (.*)$",
+    "release_heading": "^### (R\\d+\\.\\d+)\b",
+    "release_field": "\\*\\*Release\\.\\*\\* (R\\d+\\.\\d+)",
+    "dod_field": "^\\*\\*DoD\\.\\*\\*(.*)$"
+  },
+  "rules_sections": [
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 0."
+    },
+    {
+      "doc": "BACKLOG",
+      "heading_prefix": "## 6."
+    }
+  ],
+  "status": {
+    "doc": "QR",
+    "done": [
+      "🟢"
+    ],
+    "blocked": [
+      "🔴"
+    ],
+    "open": [
+      "⬜"
+    ]
+  },
+  "context_order": [
+    "PRD",
+    "TA",
+    "QR",
+    "BACKLOG",
+    "ROADMAP"
+  ],
+  "roadmap": {
+    "doc": "ROADMAP",
+    "milestone_row": "^\\| [^|]*\\| (R\\d+\\.\\d+) "
+  }
+}

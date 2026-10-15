@@ -1,0 +1,13 @@
+{
+  "phase": "implementation",
+  "worker": "aider",
+  "instructions": "Implement only what the frozen contract and failing tests require. Orchestrator owns git commits.",
+  "goals": [
+    "build",
+    "test"
+  ],
+  "tools": [
+    "edit"
+  ],
+  "pack": false
+}

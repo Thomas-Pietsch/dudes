@@ -1,0 +1,9 @@
+{
+  "phase": "qa",
+  "worker": "ollama",
+  "instructions": "Write the QR from test evidence and the contract. Split spec vs standards. Do not treat field hypotheses as passing tests.",
+  "tools": [
+    "none"
+  ],
+  "pack": false
+}

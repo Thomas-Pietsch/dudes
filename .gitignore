@@ -1,0 +1,25 @@
+# Instance repos nested in the workspace are excluded locally (.git/info/exclude), never named here.
+
+# IDEs
+.vscode/
+.cline/
+nul
+
+# Local noise
+*.log
+.env
+*.txt
+*.py
+*.js
+
+# Go engine
+/bin/
+dudes.json
+*.exe
+.dudes/
+
+# Agent ephemeral scratchpad (never commit)
+SESSION_STATE.md
+
+/.cache/
+/.claude/worktrees/

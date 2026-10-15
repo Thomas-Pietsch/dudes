@@ -1,0 +1,16 @@
+#!/bin/sh
+# The framework's own gate before its commits leave the machine: `make ci` (vet, tests, TODO WIP
+# limit, TREND consistency). The instance repos share this hooks directory and only get Git LFS.
+top=$(git rev-parse --show-toplevel)
+if [ -f "$top/cmd/dudes/main.go" ] && [ -f "$top/Makefile" ]; then
+  (cd "$top" && make -s ci </dev/null) || {
+    printf >&2 "\n❌ DUDES: make ci failed — push refused. Fix it; --no-verify only knowingly.\n\n"
+    exit 1
+  }
+fi
+command -v git-lfs >/dev/null 2>&1 || { # a repo without an LFS filter needs no git-lfs
+  grep -qs 'filter=lfs' "$top/.gitattributes" || exit 0
+  printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'pre-push' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."
+  exit 2
+}
+git lfs pre-push "$@"

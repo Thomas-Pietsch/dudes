@@ -1,0 +1,21 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text eol=lf
+
+# Declare files that will always have LF line endings on checkout.
+*.sh text eol=lf
+*.conf text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Binary files: stored as they are. Without this, `* text` above would rewrite line endings inside
+# them (a PNG's signature holds a CRLF). Nothing here is in Git LFS; an instance repo that needs
+# LFS keeps its own rules.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.exe binary
+*.so binary
+*.woff2 binary

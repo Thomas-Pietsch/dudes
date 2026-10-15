@@ -1,0 +1,16 @@
+{
+  "product": "bookshelf",
+  "roots": {
+    "lead": "examples/sample/lead",
+    "pm": "examples/sample/pm"
+  },
+  "entries": [
+    {"id": "PS", "kind": "ps", "root": "lead", "path": "BOOKSHELF_PS.md"},
+    {"id": "ROADMAP", "kind": "roadmap", "root": "lead", "path": "BOOKSHELF_ROADMAP.md"},
+    {"id": "PRD", "kind": "prd", "root": "pm", "path": "BOOKSHELF_PRD.md"},
+    {"id": "TA", "kind": "ta", "root": "pm", "path": "BOOKSHELF_TA.md"},
+    {"id": "UX", "kind": "ux", "root": "pm", "path": "ux/BOOKSHELF_UX.md"},
+    {"id": "BACKLOG", "kind": "backlog", "root": "pm", "path": "BOOKSHELF_BACKLOG.md"},
+    {"id": "QR", "kind": "qr", "root": "pm", "path": "BOOKSHELF_QR.md"}
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "context-pack/1/manifest",
+  "title": "Context pack manifest (context-pack/1)",
+  "description": "Machine interface of one context pack. An orchestrator reads this file to schedule, size, cache and audit a micro-agent run. See SPEC.md CP-FR-05.",
+  "type": "object",
+  "required": ["schema", "generator", "generated", "product", "item", "title", "release", "status", "dod", "dod_missing", "budget", "over_budget", "sizes", "references", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "context-pack/1"},
+    "generator": {"type": "string", "description": "Implementation name and version"},
+    "generated": {"type": "string", "format": "date"},
+    "product": {"type": "string", "description": "Profile product prefix, e.g. BOOKSHELF"},
+    "item": {"type": "string", "pattern": "^[A-Z]+-\\d{3}$"},
+    "title": {"type": "string"},
+    "release": {"type": ["string", "null"], "pattern": "^R\\d+\\.\\d+$"},
+    "status": {"enum": ["open", "blocked", "done", "untracked"], "description": "Derived from the QR rows of the DoD IDs (CP-FR-06), never edited"},
+    "dod": {"type": "array", "items": {"type": "string"}, "description": "QR row IDs from the item's DoD field, ranges and slash lists expanded"},
+    "dod_missing": {"type": "array", "items": {"type": "string"}, "description": "DoD IDs without a QR row"},
+    "budget": {"type": ["integer", "null"], "minimum": 1},
+    "over_budget": {"type": "boolean", "description": "True if the pack still exceeds the budget after shortening every reference"},
+    "sizes": {
+      "type": "object",
+      "required": ["RULES.md", "TASK.md", "CONTEXT.md", "PACK.md"],
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "doc", "id", "chars", "trimmed"],
+        "additionalProperties": false,
+        "properties": {
+          "ref": {"type": "string", "pattern": "^\\[\\[[A-Z]+:[^\\]]+\\]\\]$"},
+          "doc": {"type": "string"},
+          "id": {"type": "string", "description": "ID, ID..ID range or §section"},
+          "chars": {"type": "integer", "minimum": 0},
+          "trimmed": {"type": "boolean"}
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "description": "Every loaded spec file → SHA-256; a pack is stale when any hash differs",
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    }
+  }
+}

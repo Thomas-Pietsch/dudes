@@ -1,0 +1,36 @@
+{
+  "product": "bench",
+  "roots": {},
+  "entries": [
+    {
+      "id": "PRD",
+      "kind": "prd",
+      "root": "workspace",
+      "path": "BENCH_PRD.md"
+    },
+    {
+      "id": "TA",
+      "kind": "ta",
+      "root": "workspace",
+      "path": "BENCH_TA.md"
+    },
+    {
+      "id": "QR",
+      "kind": "qr",
+      "root": "workspace",
+      "path": "BENCH_QR.md"
+    },
+    {
+      "id": "BACKLOG",
+      "kind": "backlog",
+      "root": "workspace",
+      "path": "BENCH_BACKLOG.md"
+    },
+    {
+      "id": "ROADMAP",
+      "kind": "roadmap",
+      "root": "workspace",
+      "path": "BENCH_ROADMAP.md"
+    }
+  ]
+}
