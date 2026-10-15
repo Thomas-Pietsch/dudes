@@ -2,7 +2,24 @@
 # The framework's own gate before its commits leave the machine: `make ci` (vet, tests, TODO WIP
 # limit, TREND consistency). The instance repos share this hooks directory and only get Git LFS.
 top=$(git rev-parse --show-toplevel)
+refs=$(cat) # what is pushed: "<local ref> <local sha> <remote ref> <remote sha>" per line; git lfs reads it too
 if [ -f "$top/cmd/dudes/main.go" ] && [ -f "$top/Makefile" ]; then
+  # The public history has its own root: a ref that shares history with the private archive (the
+  # remote `private`, where a clone has it) stays here, and so do the engine's notes, a local record.
+  archive=$(git for-each-ref --format='%(objectname)' refs/remotes/private/)
+  printf '%s\n' "$refs" | while read -r lref lsha rref rsha; do
+    [ -n "$rref" ] || continue
+    case "$rref" in refs/notes/*)
+      printf >&2 "\n❌ DUDES: %s is the engine's local record — push refused.\n\n" "$rref"
+      exit 1 ;;
+    esac
+    case "$lsha" in *[!0]*) ;; *) continue ;; esac # a deletion carries no history
+    for a in $archive; do
+      [ -z "$(git merge-base "$lsha" "$a" 2>/dev/null)" ] && continue
+      printf >&2 "\n❌ DUDES: %s shares history with the private archive — push refused.\n\n" "$lref"
+      exit 1
+    done
+  done || exit 1
   (cd "$top" && make -s ci </dev/null) || {
     printf >&2 "\n❌ DUDES: make ci failed — push refused. Fix it; --no-verify only knowingly.\n\n"
     exit 1
@@ -13,4 +30,4 @@ command -v git-lfs >/dev/null 2>&1 || { # a repo without an LFS filter needs no 
   printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'pre-push' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."
   exit 2
 }
-git lfs pre-push "$@"
+printf '%s\n' "$refs" | git lfs pre-push "$@"
