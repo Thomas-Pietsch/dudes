@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/handoff"
 	"github.com/Thomas-Pietsch/dudes/internal/phase"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
+	"github.com/Thomas-Pietsch/dudes/internal/specset"
 )
 
 // The item branch (F88) merges as it is: every engine commit on it names its task, an approved task
@@ -208,8 +210,8 @@ func sliceDone(cfg config.Config, st *runstate.State) (next string, ok bool) {
 	if branch == "" {
 		branch = "<the slice's branch>"
 	}
-	return fmt.Sprintf("slice %s done: every task is decided — %s merges as it is. next: git merge --no-ff %s, on the branch it came from, with your role tag on the merge commit (hooks/commit-msg)",
-		handoff.SliceName(con), branch, branch), true
+	return fmt.Sprintf("slice %s done: every task is decided, and %s merges as it is — next, from the repo's root on the branch it came from: make land SLICE=%s ROLE=<your role>, or dudes land %s -by <your role>",
+		handoff.SliceName(con), branch, con.ID, con.ID), true
 }
 
 // endSlice ends the run of an item slice whose every task is done and decided: its state says so
@@ -235,6 +237,90 @@ func endSliceStep(cfg config.Config, st *runstate.State) (code int, ended bool) 
 	}
 	fmt.Println(next)
 	return 0, true
+}
+
+const landUsage = "usage: dudes land <slice> -by <role>, from the dev repository's root"
+
+// cmdLand lands an ended slice (F88), run from the dev repository's root: git merge --no-ff of its
+// branch into the branch checked out there, the role's tag and the item on the merge commit, through
+// git's hooks. A merge git stops is taken back, and nothing else happens. Merged, the slice's spec
+// pins, its worktree and its branch go; its run notes and its kept passes stay. Exit 1: refused, or
+// merged with something left to remove; 2: a usage error.
+func cmdLand(args []string) int {
+	id, extra, role, err := answerArgs(args)
+	if err != nil || id == "" || extra != "" || role == "" {
+		fmt.Fprintf(os.Stderr, "dudes: %s%s\n", errPrefix(err), landUsage)
+		return 2
+	}
+	if err := handoff.CheckID(id); err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
+		return 2
+	}
+	fail := func(format string, a ...any) int {
+		fmt.Fprintf(os.Stderr, "dudes: "+format+"\n", a...)
+		return 1
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return fail("%v", err)
+	}
+	root, err := gitx.Toplevel(dir)
+	if err != nil {
+		return fail("%v", err)
+	}
+	if !handoff.SameDir(root, dir) {
+		return fail("run it from the dev repository's root (%s), not from %s", root, dir)
+	}
+	wt := filepath.Join(root, ".worktrees", id)
+	cfg, _, err := config.Load(filepath.Join(wt, ".dudes", "dudes.json"))
+	if err != nil {
+		return fail("no slice %s here: %v", id, err)
+	}
+	st, ok, err := runstate.Load(wt)
+	if err != nil || !ok {
+		return fail("slice %s has no run (%v)", id, err)
+	}
+	if st.Status != runstate.StatusEnded {
+		return fail("slice %s is not done (run status %s): review and decide its tasks first (dudes status)", id, st.Status)
+	}
+	con, ok, err := contract.Load(wt)
+	if err != nil || !ok {
+		return fail("slice %s has no contract (%v)", id, err)
+	}
+	branch := strings.TrimPrefix(gitx.Branch(wt), "refs/heads/")
+	into := strings.TrimPrefix(gitx.Branch(root), "refs/heads/")
+	if branch == "" || into == "" || branch == into {
+		return fail("slice %s: its branch %q cannot be merged into %q — check out the branch it came from", id, branch, into)
+	}
+	if err := gitx.MergeNoFF(root, branch, handoff.MergeMessage(con, branch, role)); err != nil {
+		return fail("%v\nnothing landed: the merge is taken back", err)
+	}
+	head, _ := gitx.Head(root)
+	fmt.Printf("landed %s: %s merged into %s (%s), by %s\n", handoff.SliceName(con), branch, into, head, role)
+
+	// the merge is in: what only the slice's run needed goes, its pins first (the worktree names them)
+	var left []string
+	if set, ok, err := specset.Load(wt, cfg.Product); err == nil && ok {
+		for name := range set.Roots {
+			pin, err := set.RootAbs(wt, name)
+			if err != nil || filepath.Base(pin) != "spec-"+id || filepath.Base(filepath.Dir(pin)) != ".worktrees" {
+				continue // not a pin this slice made
+			}
+			if err := gitx.RemoveWorktree(filepath.Dir(filepath.Dir(pin)), pin); err != nil {
+				left = append(left, err.Error())
+			}
+		}
+	}
+	if err := gitx.RemoveWorktree(root, wt); err != nil {
+		left = append(left, err.Error())
+	} else if err := gitx.DeleteMergedBranch(root, branch); err != nil {
+		left = append(left, err.Error())
+	}
+	if len(left) > 0 {
+		return fail("landed, and left: %s", strings.Join(left, "; "))
+	}
+	fmt.Printf("removed .worktrees/%s, its spec pins and %s; its run notes and kept passes stay\n", id, branch)
+	return 0
 }
 
 // endedRun is what a command says about a run that ended (StatusEnded): in the slice's worktree the

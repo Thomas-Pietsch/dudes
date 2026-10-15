@@ -126,6 +126,31 @@ func CreateRef(dir, name, commit string) error {
 	return nil
 }
 
+// MergeNoFF merges branch into the branch checked out in dir with a merge commit of its own, message
+// as its message, through git merge and its hooks. A merge git stops — a conflict, a hook's refusal —
+// is taken back (git merge --abort), so dir is as before.
+func MergeNoFF(dir, branch, message string) error {
+	if branch == "" || strings.HasPrefix(branch, "-") {
+		return fmt.Errorf("%q is not a branch", branch)
+	}
+	out, _, err := run(dir, "merge", "--no-ff", "-m", message, branch)
+	if err == nil {
+		return nil
+	}
+	if _, _, verr := run(dir, "rev-parse", "-q", "--verify", "MERGE_HEAD"); verr == nil {
+		_, _, _ = run(dir, "merge", "--abort")
+	}
+	return fmt.Errorf("git merge %s: %v %s", branch, err, strings.TrimSpace(out))
+}
+
+// DeleteMergedBranch deletes the local branch name, which must be merged into HEAD (git branch -d).
+func DeleteMergedBranch(dir, name string) error {
+	if _, _, err := run(dir, "branch", "-d", name); err != nil {
+		return fmt.Errorf("git branch -d %s: %w", name, err)
+	}
+	return nil
+}
+
 // DeleteRef removes the ref name; a ref that is not there is fine.
 func DeleteRef(dir, name string) error {
 	if _, _, err := run(dir, "update-ref", "-d", name); err != nil {

@@ -553,6 +553,8 @@ func TestParseSliceArgs(t *testing.T) {
 		{[]string{"X-003"}, sliceArgs{}, false, false},
 		{[]string{"-pick", "sort", "versions"}, sliceArgs{}, false, false},
 		{[]string{"-base", "x", "something"}, sliceArgs{}, false, false},
+		{[]string{"X-001", "-slice", "s.json", "-run"}, sliceArgs{item: "X-001", slicing: "s.json", run: true}, true, false},
+		{[]string{"-run", "fast"}, sliceArgs{}, false, false},
 		{[]string{"X-001", "-slice"}, sliceArgs{}, true, true},
 		{[]string{"X-001", "X-002", "-slice", "s.json"}, sliceArgs{}, true, true},
 	} {

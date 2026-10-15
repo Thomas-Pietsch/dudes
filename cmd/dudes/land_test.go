@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -365,6 +366,95 @@ func TestItemBranchMergesAsItIs(t *testing.T) {
 				t.Errorf("commit-msg refuses %s in %s: %v\n%s", sha, where, err, out)
 			}
 		}
+	}
+}
+
+// The bridge (F88): a dev repo whose Makefile includes the framework's make/bridge.mk by its path runs
+// a slice through its goals — slice, review, approve both tasks, land — with a worker that stands in
+// for Aider. development then holds the product's files and the slice's commits under the role's
+// merge, and the slice's worktree, pin and branch are gone; its kept passes stay.
+func TestBridgeGoalsLandASlice(t *testing.T) {
+	for _, tool := range []string{"make", "sh"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	f := newHandoffFixture(t)
+	framework, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "dudes")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v\n%s", err, out)
+	}
+	script := filepath.Join(dir, "worker.sh")
+	if err := os.WriteFile(script, []byte(fakeWorker), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	user := filepath.Join(dir, "user.json")
+	if err := os.WriteFile(user, []byte(`{"aider": {"launch": ["sh", "`+filepath.ToSlash(script)+`"], "timeout_sec": 300}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, f.dev, "config", "core.hooksPath", filepath.ToSlash(filepath.Join(framework, "hooks")))
+	gitIn(t, f.dev, "checkout", "-q", "-b", "development")
+	if err := os.WriteFile(filepath.Join(f.dev, "Makefile"), []byte("-include "+filepath.ToSlash(framework)+"/make/bridge.mk\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, f.dev, "add", "Makefile")
+	gitIn(t, f.dev, "commit", "-qm", "chore(make): the engine's goals [🔹Developer]")
+	base := gitIn(t, f.dev, "rev-parse", "HEAD")
+	mk := func(goal string, vars ...string) string {
+		t.Helper()
+		args := append([]string{"-C", f.dev, goal, "DUDES_BIN=" + filepath.ToSlash(bin), "DUDES_CONFIG=" + filepath.ToSlash(user)}, vars...)
+		out, err := exec.Command("make", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("make %s: %v\n%s", goal, err, out)
+		}
+		return string(out)
+	}
+
+	mk("slice", "ITEM=BL-002", "SLICING="+filepath.ToSlash(f.slicing(t, "bl-002a", nil)))
+	if out := mk("review", "SLICE=bl-002a"); !strings.Contains(out, "bl-002a-tests") || !strings.Contains(out, "semver/bl002_test.go") {
+		t.Errorf("make review shows no review packet of the red task:\n%s", out)
+	}
+	mk("approve", "SLICE=bl-002a", "TASK=bl-002a-tests", "ROLE=QA Engineer")
+	mk("approve", "SLICE=bl-002a", "TASK=bl-002a-code", "ROLE=Developer")
+	mk("land", "SLICE=bl-002a", "ROLE=Developer")
+
+	subjects := strings.Split(gitIn(t, f.dev, "log", "--format=%s", base+"..HEAD"), "\n")
+	want := []string{"feat(BL-002a): AC-1 and AC-3 of BL-002, from feature/bl-002a [🔹Developer]",
+		"feat(BL-002a): code for AC-1 and AC-3 [🔹engine]", "test(BL-002a): red tests for AC-1 and AC-3 [🔹engine]"}
+	if len(subjects) != 4 || strings.Join(subjects[:3], "\n") != strings.Join(want, "\n") || !strings.HasPrefix(subjects[3], "chore(BL-002a): start the run") {
+		t.Errorf("development holds:\n%s", strings.Join(subjects, "\n"))
+	}
+	if msg := gitIn(t, f.dev, "log", "-1", "--format=%B"); !strings.Contains(msg, "\nItem: BL-002") {
+		t.Errorf("the merge does not name the item:\n%s", msg)
+	}
+	if got := strings.Fields(gitIn(t, f.dev, "diff", "--name-only", base, "HEAD")); strings.Join(got, " ") != "semver/bl002_test.go semver/hook.go semver/semver.go" {
+		t.Errorf("the merge brought in %v", got)
+	}
+	for _, gone := range []string{f.worktree("bl-002a"), filepath.Join(f.spec, ".worktrees", "spec-bl-002a")} {
+		if _, err := os.Stat(gone); !os.IsNotExist(err) {
+			t.Errorf("%s is still there (%v)", gone, err)
+		}
+	}
+	if b := gitIn(t, f.dev, "branch", "--list", "feature/bl-002a"); b != "" {
+		t.Errorf("the slice's branch is still there: %s", b)
+	}
+	if refs := gitIn(t, f.dev, "for-each-ref", "--format=%(refname)", "refs/dudes/passes/"); strings.Count(refs, "\n")+1 != 2 {
+		t.Errorf("kept passes %q, want the two tasks'", refs)
+	}
+	st, ok, _ := runstate.Load(f.dev)
+	if !ok || st.Status != runstate.StatusEnded || st.DecidedBy["bl-002a-tests"].Role != "QA Engineer" || st.DecidedBy["bl-002a-code"].Role != "Developer" {
+		t.Errorf("the run on development: %+v", st)
+	}
+	if gitIn(t, f.dev, "status", "--porcelain") != "" {
+		t.Error("the landing left changes")
 	}
 }
 

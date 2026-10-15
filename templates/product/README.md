@@ -29,6 +29,7 @@ The guides give each host's checks and fixes: [Claude Code](../../docs/CLAUDE_CO
 | User docs, a design, a security review | Add the role to the Role Tasks table and the Flow line (`rules/DUDES.md` §4): UI/UX and Security after the PM, Technical Writer after QA (Verify) |
 | Spec and code in two repos | Give each repo its own `AGENTS.md` (spec level: the PM; dev level: QA (Author), Developer, QA (Verify)) and follow `rules/DUDES.md` §4, §6 and §12 as written instead of the Release section |
 | Commit rules enforced by git | `git config core.hooksPath .dudes-framework/hooks`. Then a commit without a `[🔹Role]` tag is refused, and so is a QR commit on `development` |
+| The engine's local worker writes an item's red tests and code (a repo that tracks `dudes/`) | Add `-include .dudes-framework/make/bridge.mk` to the `Makefile` and run `make -C .dudes-framework build`: `make help` then lists `slice`, `review`, `approve`, `redo` and `land` (`FEATURES.md` F88) |
 | A newer DUDES | `git submodule update --remote .dudes-framework`, read what changed in `rules/`, commit the new pointer |
 
 The rules and this `AGENTS.md` are about 47 KB of text, read at the start of every session.

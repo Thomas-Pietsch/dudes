@@ -82,6 +82,25 @@ func (n Names) Trailers(item string, passes int) string {
 	return joinLines(item, t)
 }
 
+// MergeMessage is the message of the merge that lands a slice's branch, in the role's name: the
+// slice, its criteria, the branch, the role's tag, and the item's trailer —
+// "feat(BK-001a): AC-1 and AC-3 of BK-001, from feature/bk-001a [🔹Developer]".
+func MergeMessage(c *contract.Contract, branch, role string) string {
+	what := "the slice"
+	if crit := Criteria(c); len(crit) > 0 {
+		what = listAnd(crit) + " of " + c.Item
+	}
+	return fmt.Sprintf("feat(%s): %s, from %s [🔹%s]\n\nItem: %s", SliceName(c), what, branch, role, c.Item)
+}
+
+// CheckID refuses a slice ID that makes no safe branch and directory name.
+func CheckID(id string) error {
+	if !idRe.MatchString(id) {
+		return fmt.Errorf("slice %q: lower-case letters, digits and - . _ only, like bk-001a", id)
+	}
+	return nil
+}
+
 // StartSubject is the subject of a slice's first commit, the one its run's notes start on:
 // "chore(BK-001a): start the run for AC-1 and AC-3 of BK-001 [🔹engine]".
 func StartSubject(c *contract.Contract) string {

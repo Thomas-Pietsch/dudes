@@ -60,6 +60,8 @@ In a host with subagents (Claude Code, Cursor) a role splits its work only this 
 | QA Engineer (Verify) | one verifier per acceptance criterion | the criterion, its test, the recorded run | verdict with evidence | writes the QR rows |
 | CEO, Product Visionary | `research` | the question | cited, dated findings | decides |
 
+Where `make help` lists `slice`, the engine's local worker writes the red tests and the code: QA (Author) and the Developer run the goals (`slice`, `review`, `approve`, `redo`, `land`), review at each pause, and spawn no red-test writer or implementer of their own.
+
 **Inheritance principle:** DUDES (`rules/`) is the base class — it defines common rules, tasks, and flow that every agent inherits. A role-specific `AGENTS.md` extends the base: it inherits everything from DUDES and only adds domain-specific tasks, boundaries, and Definition of Done. No role redefines what DUDES already provides (DRY). The `⚠️ Framework Requirement` in every `AGENTS.md` is the `requires parent` declaration — without it, the role cannot function.
 
 ---

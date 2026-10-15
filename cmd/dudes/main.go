@@ -213,6 +213,8 @@ func run(args []string) int {
 		return cmdDecide(*configPath, rest[1:])
 	case "redo":
 		return cmdRedo(*configPath, rest[1:])
+	case "land":
+		return cmdLand(rest[1:])
 	case "item":
 		return cmdItem(*configPath, rest[1:], *wantJSON)
 	default:
@@ -1667,13 +1669,14 @@ Usage:
   dudes do [-pick] <prompt>            intake: a named work item binds and starts at test_authoring,
                                        a make goal runs; anything else prints the menu (exit 2);
                                        -pick: the text model suggests one entry, you run it
-  dudes do <ITEM> -slice <file.json> [-base <ref>]
+  dudes do <ITEM> -slice <file.json> [-base <ref>] [-run]
                                        item handoff (F88), from the dev repo's root: prepares one slice
                                        of the item — worktree .worktrees/<id> on feature/<id> from -base
                                        (default: the current branch's upstream, else HEAD; refused when
                                        either exists), each spec root pinned as a detached worktree
                                        <root repo>/.worktrees/spec-<id>, the run's .dudes/, a red-test
-                                       task and a code task, init, freeze — and prints the next command.
+                                       task and a code task, init, freeze — and prints the next command;
+                                       -run then runs the slice to its first pause.
                                        Reads the repo's tracked dudes/: profile.json; specset.json
                                        (roots {"<name>": {"repo": "../spec", "pin": "release/x-v1.0"}},
                                        entries as in .dudes/specset.json); config.json (a dudes.json
@@ -1706,6 +1709,10 @@ Usage:
                                        send a task back: its next run gets the feedback (a finished one
                                        reopens, an ended slice runs again). Both record who answered, in the
                                        event and the run state: your git identity, and the role -by names (F88)
+  dudes land <slice> -by <role>        from the dev repo's root, once the slice's run ended: git merge --no-ff
+                                       of feature/<slice> into the branch checked out there, the role's tag
+                                       and the item on the merge commit (hooks run; a stopped merge is taken
+                                       back), then its spec pins, worktree and branch go (F88)
   dudes item check [-json]             spec-set consistency C1–C8 (needs .dudes/profile.json)
   dudes item list | board              work items + status from QR and acceptance runs (F70)
   dudes item pack <ID>… [-all] [-budget N]

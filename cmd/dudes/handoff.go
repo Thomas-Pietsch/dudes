@@ -25,20 +25,26 @@ import (
 // work. Preparation is process, so the engine does it: a model call per item for it would be advisory
 // and cost tokens (CORE §13).
 
-const doSliceUsage = "usage: dudes do <ITEM> -slice <file.json> [-base <ref>]"
+const doSliceUsage = "usage: dudes do <ITEM> -slice <file.json> [-base <ref>] [-run]"
 
 // sliceArgs are the arguments of `dudes do … -slice`.
-type sliceArgs struct{ item, slicing, base string }
+type sliceArgs struct {
+	item, slicing, base string
+	run                 bool // -run: run the prepared slice to its first pause
+}
 
 // parseSliceArgs reads the words after `dudes do`. -slice switches intake (F84) to item handoff;
-// without it the words are the prompt, unchanged — and so is -base, which means something only with
-// -slice.
+// without it the words are the prompt, unchanged — and so are -base and -run, which mean something
+// only with -slice.
 func parseSliceArgs(words []string) (a sliceArgs, slice bool, err error) {
 	var rest []string
 	for i := 0; i < len(words); i++ {
 		name, val, hasVal := strings.Cut(words[i], "=")
 		switch name {
 		case "-slice", "--slice", "-base", "--base":
+		case "-run", "--run":
+			a.run = true
+			continue
 		default:
 			rest = append(rest, words[i])
 			continue
@@ -69,7 +75,8 @@ func parseSliceArgs(words []string) (a sliceArgs, slice bool, err error) {
 }
 
 // cmdDoSlice prepares the slice in the repository the command runs in and prints what it made and
-// the next command. Exit 1: nothing was made (or it was taken back); 2: a usage error.
+// the next command; with -run it runs the slice to its first pause, as dudes run does. Exit 1: nothing
+// was made (or it was taken back), or the run stopped on an error; 2: a usage error.
 func cmdDoSlice(configPath string, a sliceArgs) int {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -82,7 +89,10 @@ func cmdDoSlice(configPath string, a sliceArgs) int {
 		return 1
 	}
 	res.print(os.Stdout)
-	return 0
+	if !a.run {
+		return 0
+	}
+	return cmdRun(filepath.Join(dir, filepath.FromSlash(res.Config)), "", false, false, false, "")
 }
 
 // sliceResult is what a preparation made.
