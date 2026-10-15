@@ -159,6 +159,50 @@ func ReadLastLog(dir string) (string, bool, error) {
 	return log, ok, err
 }
 
+// Record is a run read back from its note: the header record writes, then the output.
+type Record struct {
+	Args     string // the command as recorded: "[go test ./...]"
+	Exit     int
+	OK       bool
+	Duration string
+	Dirty    bool // the run tested uncommitted changes too
+	Output   string
+}
+
+// ParseRecord reads a note record wrote. A note without its first line, "# dudes test", is all output.
+func ParseRecord(note string) Record {
+	first, rest, found := strings.Cut(note, "\n")
+	if first != "# dudes test" || !found {
+		return Record{Output: note}
+	}
+	var r Record
+	for {
+		line, after, found := strings.Cut(rest, "\n")
+		if !strings.HasPrefix(line, "# ") {
+			break
+		}
+		key, val, _ := strings.Cut(strings.TrimPrefix(line, "# "), ": ")
+		switch key {
+		case "args":
+			r.Args = val
+		case "exit":
+			fmt.Sscanf(val, "%d", &r.Exit)
+		case "ok":
+			r.OK = val == "true"
+		case "duration":
+			r.Duration = val
+		case "tree":
+			r.Dirty = strings.HasPrefix(val, "dirty")
+		}
+		if !found {
+			return r
+		}
+		rest = after
+	}
+	r.Output = strings.TrimPrefix(rest, "\n")
+	return r
+}
+
 // record writes the run as a note on HEAD. No commit yet → nothing to attach it to.
 func record(dir, ref string, res *Result) error {
 	if head, _ := gitx.Head(dir); head == "" {

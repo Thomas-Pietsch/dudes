@@ -17,7 +17,7 @@ description: Review a change against its frozen spec and the repo's standards, o
    - Each case the criterion names is asserted with spec values; a check matches only what it means (`file:line`, not a digit anywhere in the output).
    - One detection function per rule, used for the violating fixture, the clean case and the real tree.
    - A failure fails: no skip, no log-and-continue; only a root that does not exist yet may be passed over, explicitly.
-   - Answer `dudes decide <task>` or `dudes redo <task> "<the concrete defect>"`.
+   - `dudes status` shows what you decide on: the task's diff, its gate run, the worker's reply. Answer `dudes decide <task> -by <your role>` or `dudes redo <task> -by <your role> "<the concrete defect>"`: the run records who answered.
 7. **Output:** concrete `file:line` findings under `## Spec` and `## Standards`, then one line per axis: the number of findings and the worst one. No phase-graph advice.
 
 Skills teach discipline. They do not choose the next phase.

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -106,6 +107,9 @@ func land(cfg config.Config, st *runstate.State, taskID string) {
 		stay(err.Error())
 		return
 	}
+	// the ledger records each event on the commit it happened on and is read whole (events.Ledger):
+	// it stays on the kept passes, where a copy would count them twice
+	notes = slices.DeleteFunc(notes, func(r string) bool { return r == events.LedgerRef })
 	kept, err := keepPasses(ws, con.ID, taskID, run.Commits[0].SHA)
 	if err != nil {
 		stay(err.Error())

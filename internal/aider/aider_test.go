@@ -317,3 +317,42 @@ func TestRunTokenLimit(t *testing.T) {
 		t.Fatalf("want a context-full error, got %v", err)
 	}
 }
+
+// Aider reports each model call's tokens as it prints them, rounded; a run's cost is their sum (F88).
+func TestUsage(t *testing.T) {
+	for _, c := range []struct {
+		name, out      string
+		sent, received int
+		ok             bool
+	}{
+		{"one call", "Applied edit to semver/semver.go\nTokens: 2.1k sent, 302 received.\n", 2100, 302, true},
+		{"calls summed", "Tokens: 9.8k sent, 1.2k received.\nreflection\nTokens: 12k sent, 85 received.\n", 21800, 1285, true},
+		{"cache figures and a cost", "Tokens: 12k sent, 1.2k cache write, 3.4k cache hit, 1.3k received. Cost: $0.01 message, $0.02 session.\n", 12000, 1300, true},
+		{"wrapped by the console", "Tokens: 12k sent, 1.2k cache write, 3.4k cache hit,\n1.3k received.\n", 12000, 1300, true},
+		{"the chat history's quote", "> Tokens: 950 sent, 12 received.\n", 950, 12, true},
+		{"no report", "Applied edit to semver/semver.go\n", 0, 0, false},
+		{"the input's tokens, not a report", "> Input tokens: ~27,375 of 32,768\n", 0, 0, false},
+	} {
+		sent, received, ok := aider.Usage(c.out)
+		if sent != c.sent || received != c.received || ok != c.ok {
+			t.Errorf("%s: got %d/%d %v, want %d/%d %v", c.name, sent, received, ok, c.sent, c.received, c.ok)
+		}
+	}
+}
+
+// A run that failed after the model answered still returns what the worker wrote: its tokens count
+// (a reply cut off at the context had filled it).
+func TestRunReturnsTheOutputOfAFailedCall(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("no sh")
+	}
+	dir := t.TempDir()
+	cfg := aider.Config{Bin: "aider", Launch: []string{"sh", "-c", `echo "Model ollama_chat/m has hit a token limit!"; echo "Tokens: 27k sent, 29 received."`}, Timeout: 30 * time.Second}
+	out, err := aider.Run(context.Background(), dir, "implement demo", cfg)
+	if err == nil || !strings.Contains(err.Error(), "reply was cut off") {
+		t.Fatalf("want the context-full error, got %v", err)
+	}
+	if sent, received, ok := aider.Usage(out); !ok || sent != 27000 || received != 29 {
+		t.Errorf("the failed call's tokens: %d/%d %v in %q", sent, received, ok, out)
+	}
+}

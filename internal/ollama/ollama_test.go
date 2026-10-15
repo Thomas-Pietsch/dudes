@@ -36,6 +36,22 @@ func TestGenerateSingleShot(t *testing.T) {
 	}
 }
 
+// A call's cost is Ollama's own count of its tokens, from the generate reply (F88).
+func TestGenerateUsage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"response": "# QR\n", "done": true, "prompt_eval_count": 1834, "eval_count": 211, "total_duration": 4200000000})
+	}))
+	defer srv.Close()
+	c := ollama.New(ollama.Config{BaseURL: srv.URL, Model: "test"})
+	out, u, err := c.GenerateUsage(context.Background(), "hello")
+	if err != nil || out != "# QR" {
+		t.Fatalf("out %q err %v", out, err)
+	}
+	if u.PromptTokens != 1834 || u.CompletionTokens != 211 {
+		t.Fatalf("usage %+v", u)
+	}
+}
+
 func TestPhasePromptIncludesPrior(t *testing.T) {
 	p := ollama.PhasePrompt(phase.Spec, "demo", "build x", "## PS\nprior", "pack-body", "demo_PRD.md", "", "", "")
 	if !strings.Contains(p, "prior") || !strings.Contains(p, "PRD") || !strings.Contains(p, "pack-body") || !strings.Contains(p, "demo_PRD.md") || !strings.Contains(p, "BEGIN ARTIFACT") || !strings.Contains(p, "### Requirement:") {

@@ -5,9 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,7 +52,8 @@ func DefaultConfig() Config {
 
 // Run executes Aider in workspace with a single --message (fresh process = context boundary).
 // Always passes --yes and --no-auto-commits so the orchestrator owns Git.
-// Run invokes the worker once and returns its (redacted) stdout.
+// Run invokes the worker once and returns its (redacted) stdout — with an error as well, as far as
+// the worker wrote any: a call that failed after the model answered still cost its tokens (Usage).
 func Run(ctx context.Context, workspace, message string, cfg Config) (string, error) {
 	if cfg.Bin == "" {
 		cfg.Bin = "aider"
@@ -118,9 +122,10 @@ func Run(ctx context.Context, workspace, message string, cfg Config) (string, er
 	release := awake.Hold()
 	err = cmd.Run()
 	release()
+	out := redact.String(stdout.String())
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return "", fmt.Errorf("aider: timed out after %s (aider.timeout_sec)", cfg.Timeout)
+			return out, fmt.Errorf("aider: timed out after %s (aider.timeout_sec)", cfg.Timeout)
 		}
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
@@ -129,16 +134,48 @@ func Run(ctx context.Context, workspace, message string, cfg Config) (string, er
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", fmt.Errorf("aider: %s", truncate(redact.String(msg), 800))
+		return out, fmt.Errorf("aider: %s", truncate(redact.String(msg), 800))
 	}
-	out := redact.String(stdout.String())
 	// A reply cut off at the model's context is no answer — it read as "no file changes" before
 	// (an instance trial: 29 output tokens, five steps lost). Either limit cuts it: the context, or
 	// the reply cap — another slice stopped at ~10k of num_predict 12288 rewriting whole files.
 	if i := strings.Index(out, "has hit a token limit"); i >= 0 {
-		return "", fmt.Errorf("aider: the model's reply was cut off — raise its num_ctx (context) or num_predict (reply cap), or narrow the task's refs or scope:\n%s", truncate(out[i:], 400))
+		return out, fmt.Errorf("aider: the model's reply was cut off — raise its num_ctx (context) or num_predict (reply cap), or narrow the task's refs or scope:\n%s", truncate(out[i:], 400))
 	}
 	return out, nil
+}
+
+// tokensLine is Aider's report after each model call, as it prints it: "Tokens: 2.1k sent, 302
+// received." — with cache figures between for a model that has them, and a cost after for a model
+// with prices. The console may wrap it, so any space between the words may be a line break.
+var tokensLine = regexp.MustCompile(`Tokens:\s+([0-9][0-9.]*k?)\s+sent,(?:\s+[0-9][0-9.]*k?\s+cache\s+(?:write|hit),)*\s+([0-9][0-9.]*k?)\s+received`)
+
+// Usage is Aider's own report of what a run's model calls cost, summed over its "Tokens:" lines: the
+// tokens sent (the prompts) and received (the replies). Aider rounds each figure to 0.1k under 10k
+// and to 1k above. ok=false: the output holds no report.
+func Usage(out string) (sent, received int, ok bool) {
+	for _, m := range tokensLine.FindAllStringSubmatch(out, -1) {
+		s, sok := tokenCount(m[1])
+		r, rok := tokenCount(m[2])
+		if !sok || !rok {
+			continue
+		}
+		sent, received, ok = sent+s, received+r, true
+	}
+	return sent, received, ok
+}
+
+// tokenCount reads a count as Aider formats it: "302", "2.1k", "12k".
+func tokenCount(s string) (int, bool) {
+	mult := 1.0
+	if n, k := strings.CutSuffix(s, "k"); k {
+		s, mult = n, 1000
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || f < 0 {
+		return 0, false
+	}
+	return int(math.Round(f * mult)), true
 }
 
 // Message is the code worker's input in the micro-agent shape (CORE §2.4): the task first,

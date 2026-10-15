@@ -35,6 +35,29 @@ func TestRunRecordsANoteOnTheTestedCommit(t *testing.T) {
 	if err != nil || !ok || commit != head || !strings.Contains(log, "# ok: false") {
 		t.Fatalf("ok=%v err=%v commit=%s head=%s log=%q", ok, err, commit, head, log)
 	}
+	// the note reads back as the run: its command, outcome and output (the review packet, F88)
+	rec := testrun.ParseRecord(log)
+	if rec.Args != "[go test ./...]" || rec.OK || rec.Exit != res.ExitCode || rec.Duration == "" || rec.Dirty {
+		t.Errorf("record %+v", rec)
+	}
+	if strings.TrimSpace(rec.Output) != strings.TrimSpace(res.Output) {
+		t.Errorf("output %q, want %q", rec.Output, res.Output)
+	}
+}
+
+// A note that is not a recorded run is all output; a build failure's "# pkg" lines stay output.
+func TestParseRecordKeepsTheOutput(t *testing.T) {
+	note := "# dudes test\n# args: [go test]\n# exit: 1\n# ok: false\n# duration: 1.5s\n# tree: dirty (1 uncommitted path(s) — the run tested more than this commit)\n\n# bench/semver\nsemver.go:3:1: syntax error\n"
+	rec := testrun.ParseRecord(note)
+	if rec.Args != "[go test]" || rec.Exit != 1 || rec.OK || rec.Duration != "1.5s" || !rec.Dirty {
+		t.Errorf("header %+v", rec)
+	}
+	if rec.Output != "# bench/semver\nsemver.go:3:1: syntax error\n" {
+		t.Errorf("output %q", rec.Output)
+	}
+	if other := testrun.ParseRecord("# bench/semver\nx\n"); other.Output != "# bench/semver\nx\n" || other.Args != "" {
+		t.Errorf("a note without the header: %+v", other)
+	}
 }
 
 // Without a commit there is nothing to attach the record to — the run still reports.

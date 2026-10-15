@@ -5,6 +5,7 @@
 package runstate
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -55,8 +56,50 @@ type State struct {
 	Escalation string `json:"escalation,omitempty"`
 	// Redo holds, per task the human sent back (dudes redo), why; a note goes to that task's next
 	// worker only and clears when the task completes again.
-	Redo      map[string]string `json:"redo,omitempty"`
+	Redo map[string]string `json:"redo,omitempty"`
+	// DecidedBy holds, per task, who gave its latest answer: dudes decide or dudes redo (F88).
+	DecidedBy map[string]Decider `json:"decided_by,omitempty"`
+	// TaskBase holds, per task, the commit HEAD was on when the task first ran: its review diff
+	// starts there, over every pass and redo since (F88).
+	TaskBase  map[string]string `json:"task_base,omitempty"`
 	UpdatedAt time.Time         `json:"updated_at"`
+}
+
+// Decider is who answered a task's pause (F88): the git identity of whoever ran dudes decide or
+// dudes redo — what a commit made now records as its committer — and the role they named with -by.
+// An agent runs under its human's git identity: only the role tells a role-play reviewer's answer
+// from the human's own or from DevOps'.
+type Decider struct {
+	Identity string `json:"identity"`
+	Role     string `json:"role,omitempty"`
+}
+
+// String is the role and the identity, "Developer (Name <email>)", or the identity alone.
+func (d Decider) String() string {
+	if d.Role == "" {
+		return d.Identity
+	}
+	return d.Role + " (" + d.Identity + ")"
+}
+
+// StartTask records commit as where taskID's work starts, unless it has started before: a task sent
+// back keeps its first start. It reports whether it recorded anything.
+func (st *State) StartTask(taskID, commit string) bool {
+	if st == nil || taskID == "" || commit == "" || st.TaskBase[taskID] != "" {
+		return false
+	}
+	if st.TaskBase == nil {
+		st.TaskBase = map[string]string{}
+	}
+	st.TaskBase[taskID] = commit
+	return true
+}
+
+func (st *State) decided(taskID string, by Decider) {
+	if st.DecidedBy == nil {
+		st.DecidedBy = map[string]Decider{}
+	}
+	st.DecidedBy[taskID] = by
 }
 
 // HasCompleted reports whether the in-phase task finished.
@@ -82,9 +125,10 @@ func (st *State) MarkCompleted(taskID string) {
 	delete(st.Redo, taskID)
 }
 
-// Reopen sends a finished task back with the human's note: it is no longer completed or approved,
-// the next step runs it again and its worker gets the note (a red test that tests the wrong thing).
-func (st *State) Reopen(taskID, note string) {
+// Reopen sends a finished task back with the note of whoever decided (by): it is no longer completed
+// or approved, the next step runs it again and its worker gets the note (a red test that tests the
+// wrong thing).
+func (st *State) Reopen(taskID, note string, by Decider) {
 	if st == nil || taskID == "" {
 		return
 	}
@@ -94,6 +138,7 @@ func (st *State) Reopen(taskID, note string) {
 		st.Redo = map[string]string{}
 	}
 	st.TaskID, st.Redo[taskID] = taskID, note
+	st.decided(taskID, by)
 	if st.Status == StatusWaitingDecision || st.Status == StatusEnded { // a slice that ended opens again
 		st.Status = StatusRunning
 	}
@@ -134,15 +179,26 @@ func (st *State) HasApproved(taskID string) bool {
 	return false
 }
 
-// Approve records a human decision for a task (F66).
-func (st *State) Approve(taskID, note string) {
+// Approve records the decision on a task (F66) and who made it (by).
+func (st *State) Approve(taskID, note string, by Decider) {
 	if st == nil || taskID == "" {
 		return
 	}
 	if !st.HasApproved(taskID) {
 		st.Approved = append(st.Approved, taskID)
 	}
+	st.Answer(taskID, note, by)
+}
+
+// Answer records a decision on a task and who made it, and lets a waiting run go on — without
+// approving the task: the answer to a worker's escalation (F74) goes to the task's next run, and a
+// task that pauses after its run (approval: after) still pauses for its review (F88).
+func (st *State) Answer(taskID, note string, by Decider) {
+	if st == nil || taskID == "" {
+		return
+	}
 	st.Decision = note
+	st.decided(taskID, by)
 	if st.Status == StatusWaitingDecision {
 		st.Status = StatusRunning
 	}
@@ -178,14 +234,17 @@ func Save(workspace string, st *State) error {
 		return fmt.Errorf("nil state")
 	}
 	st.UpdatedAt = time.Now().UTC()
-	data, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
+	var data bytes.Buffer
+	enc := json.NewEncoder(&data)
+	enc.SetEscapeHTML(false) // a decider reads "Name <email>" in the note, not escaped for HTML
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(st); err != nil {
 		return err
 	}
 	if err := ensureCommit(workspace, st.RunID); err != nil {
 		return err
 	}
-	if err := gitx.AddNote(workspace, NotesRef, string(data)+"\n"); err != nil {
+	if err := gitx.AddNote(workspace, NotesRef, data.String()); err != nil {
 		return fmt.Errorf("write run state: %w", err)
 	}
 	return nil

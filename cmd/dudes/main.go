@@ -245,6 +245,7 @@ func flaggedJSON(global bool, args []string) bool {
 
 func emitJSON(v any) int {
 	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false) // a diff's `&&` and `<-` stay as they are, not escaped for HTML
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(v); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: json: %v\n", err)
@@ -323,6 +324,10 @@ func cmdStatus(configPath string, asJSON bool) int {
 	if _, rok, err := recipe.Load(cfg.Workspace, st.Phase); err == nil && rok {
 		run["recipe"] = recipe.Path(st.Phase)
 	}
+	pk := review(configPath, cfg, st) // F88: what a task's reviewer decides on
+	if pk != nil {
+		run["review"] = pk
+	}
 	out["run"] = run
 	if asJSON {
 		return emitJSON(out)
@@ -385,6 +390,9 @@ func cmdStatus(configPath string, asJSON bool) int {
 	}
 	fmt.Printf("updated:   %s\n", st.UpdatedAt.Format(time.RFC3339))
 	fmt.Printf("state:     %s\n", runstate.Path(cfg.Workspace))
+	if pk != nil {
+		pk.print(os.Stdout)
+	}
 	return 0
 }
 
@@ -1103,6 +1111,11 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 			return aider.Run(context.Background(), ws, msg, acfg)
 		}
 	}
+	if worker == "pi" { // each call's tokens and time in the run's events, its reply kept (F88)
+		invoke = metered(cfg, st, "pi", "", invoke)
+	} else {
+		invoke = metered(cfg, st, "aider", cfg.Aider.Model, invoke)
+	}
 	return implementConverged(cfg, st, ws, scopePats, invoke, message, subject, trailers)
 }
 
@@ -1130,7 +1143,9 @@ func phaseBody(cfg config.Config, st *runstate.State, cur phase.ID, stub bool, p
 		logPromptSize(cfg, st, cur, prompt)
 		client := cfg.OllamaClient()
 		ctx := context.Background()
-		out, err := client.Generate(ctx, prompt)
+		start := time.Now()
+		out, usage, err := client.GenerateUsage(ctx, prompt)
+		recordCall(cfg, st, ollamaUsage(client.Model(), usage, err), time.Since(start), out, err)
 		if err != nil {
 			return "", "", fmt.Errorf("ollama worker (use -stub offline): %w", err)
 		}
@@ -1204,6 +1219,11 @@ func cmdEvents(configPath string, n int, asJSON bool) int {
 		return code
 	}
 	evs, err := events.Tail(cfg.Workspace, n)
+	gone := err == nil && !events.Logged(cfg.Workspace)
+	if gone { // the log went with its workspace (a slice's worktree): the ledger is in git (F88)
+		evs, err = events.Ledger(cfg.Workspace)
+		evs = events.Last(evs, n)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
@@ -1214,6 +1234,9 @@ func cmdEvents(configPath string, n int, asJSON bool) int {
 		}
 		return emitJSON(evs)
 	}
+	if gone {
+		fmt.Printf("events: %s is not here — the ledger in refs/notes/%s: worker calls, decide, redo\n", events.Path(), events.LedgerRef)
+	}
 	if len(evs) == 0 {
 		fmt.Println("events: (none)")
 		return 0
@@ -1222,6 +1245,9 @@ func cmdEvents(configPath string, n int, asJSON bool) int {
 		detail := ev.Detail
 		if len(detail) > 80 {
 			detail = detail[:77] + "…"
+		}
+		if ev.By != "" { // who answered a pause (F88)
+			detail += " — by " + runstate.Decider{Identity: ev.By, Role: ev.Role}.String()
 		}
 		fmt.Printf("%s  %-12s %-16s %s\n",
 			ev.Time.Format(time.RFC3339),
@@ -1626,9 +1652,17 @@ func printUsage(fs *flag.FlagSet) {
 	fmt.Fprintf(os.Stderr, `dudes — DUDES process engine (Go)
 
 Usage:
-  dudes status [-json]                 show run state
+  dudes status [-json]                 show run state. A task that ran and waits for approval (approval:
+                                       after) adds its review packet (F88): the task's diff of its writable
+                                       paths since it first ran, the gate run on HEAD with the tests that
+                                       passed and failed, the worker's last reply — each cut to a bound,
+                                       with the git command or file that holds the whole
   dudes doctor                         probe git/ollama/aider/packer/config
-  dudes events [-n N] [-json]          show last N run events (.dudes/events.jsonl)
+  dudes events [-n N] [-json]          show last N run events (.dudes/events.jsonl). Each worker call is a
+                                       worker event: its local tokens (Ollama's counts, or Aider's own
+                                       report) and its duration; a decide or redo names who answered.
+                                       Those three are the ledger, kept in git too (refs/notes/dudes/ledger):
+                                       without the file (a slice's worktree removed) events reads them there
   dudes init [-prompt text] [text]     start run at first phase
   dudes do [-pick] <prompt>            intake: a named work item binds and starts at test_authoring,
                                        a make goal runs; anything else prints the menu (exit 2);
@@ -1663,11 +1697,15 @@ Usage:
   dudes specset [init]                 show or write .dudes/specset.json (original names)
   dudes contract                       show/validate .dudes/contract.json
   dudes evidence                       show requirement→test→run rows
-  dudes decide <task-id> [note]        approve a waiting in-phase task (F66). On a slice's branch (do -slice)
+  dudes decide <task-id> [-by <role>] [note]
+                                       approve a waiting in-phase task (F66). On a slice's branch (do -slice)
                                        a finished task lands as one commit, its passes kept under
                                        refs/dudes/passes/<slice>/<task>/<n>; once every task is decided the
                                        run ends (status ended) and the branch merges as it is (F88)
-  dudes redo <task-id> <feedback>      send a task back: its next run gets the feedback (a finished one reopens)
+  dudes redo <task-id> [-by <role>] <feedback>
+                                       send a task back: its next run gets the feedback (a finished one
+                                       reopens, an ended slice runs again). Both record who answered, in the
+                                       event and the run state: your git identity, and the role -by names (F88)
   dudes item check [-json]             spec-set consistency C1–C8 (needs .dudes/profile.json)
   dudes item list | board              work items + status from QR and acceptance runs (F70)
   dudes item pack <ID>… [-all] [-budget N]

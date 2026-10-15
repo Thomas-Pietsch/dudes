@@ -110,6 +110,14 @@ func stepContractTask(cfg config.Config, st *runstate.State, con *contract.Contr
 	packCtx := loadPackContext(cfg)
 	fmt.Printf("task: %s (%s)\n", tk.ID, tk.Title)
 	events.Log(cfg.Workspace, st.RunID, "task_enter", st.Phase, tk.ID)
+	// Where the task's review diff starts (F88), saved now: a step whose gate fails saves no state, and
+	// the next one would start the diff after this step's commits.
+	if head, _ := gitx.HeadFull(cfg.Workspace); st.StartTask(tk.ID, head) {
+		if err := runstate.Save(cfg.Workspace, st); err != nil {
+			fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
+			return 1
+		}
+	}
 	if code := executePhaseWork(cfg, st, stub, skipTest, packCtx, taskOverride, discipline, tools, tk.Worker); code == paused {
 		return 0
 	} else if code != 0 {

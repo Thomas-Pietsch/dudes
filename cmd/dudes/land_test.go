@@ -10,6 +10,7 @@ import (
 
 	"github.com/Thomas-Pietsch/dudes/internal/config"
 	"github.com/Thomas-Pietsch/dudes/internal/contract"
+	"github.com/Thomas-Pietsch/dudes/internal/events"
 	"github.com/Thomas-Pietsch/dudes/internal/freeze"
 	"github.com/Thomas-Pietsch/dudes/internal/gitx"
 	"github.com/Thomas-Pietsch/dudes/internal/handoff"
@@ -265,6 +266,15 @@ func TestItemBranchMergesAsItIs(t *testing.T) {
 	}
 	if acc, err := testrun.Acceptance(wt); err != nil || acc["TestBL002AC1"].Result != testrun.Pass || acc["TestBL002AC1"].Commit != tip {
 		t.Errorf("the acceptance run did not follow the landed commit: %v %v", acc, err)
+	}
+	// the ledger stays where its events happened: every worker call and every answer once
+	ledger, err := events.Ledger(wt)
+	count := map[string]int{}
+	for _, ev := range ledger {
+		count[ev.Type]++
+	}
+	if err != nil || count["worker"] != 7 || count["decide"] != 3 || count["redo"] != 3 {
+		t.Errorf("the ledger after three landings: %v %v", count, err)
 	}
 
 	// the merge, under the hooks: git's own message has no role tag and is refused

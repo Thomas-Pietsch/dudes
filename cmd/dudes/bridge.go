@@ -9,6 +9,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/contract"
 	"github.com/Thomas-Pietsch/dudes/internal/events"
 	"github.com/Thomas-Pietsch/dudes/internal/evidence"
+	"github.com/Thomas-Pietsch/dudes/internal/gitx"
 	"github.com/Thomas-Pietsch/dudes/internal/phase"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
 	"github.com/Thomas-Pietsch/dudes/internal/specset"
@@ -117,12 +118,11 @@ func cmdDecide(configPath string, args []string) int {
 		fmt.Fprintln(os.Stderr, "dudes: no run state — run: dudes init")
 		return 1
 	}
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "dudes: usage: dudes decide <task-id> [note]")
+	taskID, note, role, err := answerArgs(args)
+	if err != nil || taskID == "" {
+		fmt.Fprintf(os.Stderr, "dudes: %susage: dudes decide <task-id> [-by <role>] [note]\n", errPrefix(err))
 		return 2
 	}
-	taskID := args[0]
-	note := strings.TrimSpace(strings.Join(args[1:], " "))
 	answersEscalation := st.Escalation != "" && taskID == st.TaskID // F74
 	if con, cok, _ := contract.Load(cfg.Workspace); cok && con != nil && !answersEscalation {
 		if _, ok := con.TaskByID(taskID); !ok {
@@ -130,20 +130,33 @@ func cmdDecide(configPath string, args []string) int {
 			return 1
 		}
 	}
-	st.Approve(taskID, note)
-	if !answersEscalation {
+	by, err := decider(cfg.Workspace, role)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
+		return 1
+	}
+	if answersEscalation {
+		// the answer goes to the task's next run; it is no approval: a task that pauses after its run
+		// still pauses for its review then
+		st.Answer(taskID, note, by)
+	} else {
+		st.Approve(taskID, note, by)
 		landTask(cfg, st, taskID) // F88: on a slice's branch the task lands as one commit; the last ends the run
 	}
 	if err := runstate.Save(cfg.Workspace, st); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
 	}
-	events.Log(cfg.Workspace, st.RunID, "decide", st.Phase, taskID+" "+note)
+	logAnswer(cfg.Workspace, st, "decide", taskID+" "+note, by)
+	what := "decided"
+	if answersEscalation {
+		what = "answered the escalation of"
+	}
 	if next, done := sliceDone(cfg, st); done {
-		fmt.Printf("decided %s\n%s\n", taskID, next)
+		fmt.Printf("%s %s, by %s\n%s\n", what, taskID, by, next)
 		return 0
 	}
-	fmt.Printf("decided %s — status %s (continue with dudes step / dudes run)\n", taskID, st.Status)
+	fmt.Printf("%s %s, by %s — status %s (continue with dudes step / dudes run)\n", what, taskID, by, st.Status)
 	return 0
 }
 
@@ -155,11 +168,11 @@ func cmdRedo(configPath string, args []string) int {
 	if code != 0 {
 		return code
 	}
-	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "dudes: usage: dudes redo <task-id> <feedback>")
+	taskID, note, role, err := answerArgs(args)
+	if err != nil || taskID == "" || note == "" {
+		fmt.Fprintf(os.Stderr, "dudes: %susage: dudes redo <task-id> [-by <role>] <feedback>\n", errPrefix(err))
 		return 2
 	}
-	taskID, note := args[0], strings.TrimSpace(strings.Join(args[1:], " "))
 	st, ok, err := runstate.Load(cfg.Workspace)
 	if err != nil || !ok {
 		fmt.Fprintf(os.Stderr, "dudes: no run state (%v)\n", err)
@@ -172,12 +185,65 @@ func cmdRedo(configPath string, args []string) int {
 		fmt.Fprintf(os.Stderr, "dudes: %s is not a task of the current phase %s\n", taskID, st.Phase)
 		return 1
 	}
-	st.Reopen(taskID, note) // a finished task opens again; an open one gets the note for its next run
+	by, err := decider(cfg.Workspace, role)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
+		return 1
+	}
+	st.Reopen(taskID, note, by) // a finished task opens again; an open one gets the note for its next run
 	if err := runstate.Save(cfg.Workspace, st); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
 	}
-	events.Log(cfg.Workspace, st.RunID, "redo", st.Phase, taskID+" "+note)
-	fmt.Printf("sent %s back — the next step runs it again with your feedback\n", taskID)
+	logAnswer(cfg.Workspace, st, "redo", taskID+" "+note, by)
+	fmt.Printf("sent %s back, by %s — the next step runs it again with your feedback\n", taskID, by)
 	return 0
+}
+
+// answerArgs reads the words after dudes decide or dudes redo: the task, then the note, and anywhere
+// among them -by <role> (or -by=<role>), the role of whoever answers (F88).
+func answerArgs(words []string) (task, note, role string, err error) {
+	var rest []string
+	for i := 0; i < len(words); i++ {
+		name, val, hasVal := strings.Cut(words[i], "=")
+		if name != "-by" && name != "--by" {
+			rest = append(rest, words[i])
+			continue
+		}
+		if !hasVal && i+1 < len(words) {
+			i++
+			val = words[i]
+		}
+		if role = strings.TrimSpace(val); role == "" {
+			return "", "", "", fmt.Errorf("-by needs a role, e.g. -by Developer")
+		}
+	}
+	if len(rest) > 0 {
+		task, note = rest[0], strings.TrimSpace(strings.Join(rest[1:], " "))
+	}
+	return task, note, role, nil
+}
+
+func errPrefix(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error() + " — "
+}
+
+// decider is who answers a pause from ws: the git identity a commit made now would record, and the
+// role -by named. Without an identity nothing is recorded: git could not write the run state either.
+func decider(ws, role string) (runstate.Decider, error) {
+	id, err := gitx.Identity(ws)
+	if err != nil {
+		return runstate.Decider{}, err
+	}
+	return runstate.Decider{Identity: id, Role: role}, nil
+}
+
+// logAnswer appends a decide or redo event that names who answered (F88): to the log and the ledger.
+func logAnswer(ws string, st *runstate.State, typ, detail string, by runstate.Decider) {
+	if err := events.Append(ws, events.Event{RunID: st.RunID, Type: typ, Phase: st.Phase, Detail: detail, By: by.Identity, Role: by.Role}); err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: warning: the answer is not recorded in full: %v\n", err)
+	}
 }

@@ -106,12 +106,12 @@ The commands you will meet:
 | Command | What it does |
 |---|---|
 | `dudes run -prompt "…" [-stub]` | Starts a run if there is none, then steps until the human gate. `-stub`: no model |
-| `dudes status` | Where the run is: phase, status, spec, freeze |
+| `dudes status` | Where the run is: phase, status, spec, freeze. When a task waits for your review: its diff, its gate run, the worker's reply |
 | `dudes seal [X.Y.Z]` · `dudes reject <text>` | Your two answers at the gate |
 | `dudes verify [tag]` | Checks a seal from git alone: the signature, the seal commit, the run state |
 | `dudes check` | The two-axis consistency check, spec against standards |
 | `dudes doctor` | Probes git, Ollama, Aider, the packer and the config |
-| `dudes events` | The run's event log |
+| `dudes events` | The run's event log, with each worker call's local tokens and time, and who answered each pause; those are kept in git too, so they outlive a slice's worktree |
 | `dudes do <item> -slice <file>` | Prepares one slice, a part of a work item, for the local workers: worktree, branch, pinned spec, a task for the failing tests and a task for the code. Each task you approve with `dudes decide` lands as one commit, so the branch merges as it is |
 | `dudes help` | The rest; [`FEATURES.md`](FEATURES.md) lists every capability |
 

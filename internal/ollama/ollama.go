@@ -65,12 +65,27 @@ type generateReq struct {
 type generateResp struct {
 	Response string `json:"response"`
 	Error    string `json:"error,omitempty"`
+	// Ollama's own counts of the call: the prompt's tokens it evaluated, and the reply's.
+	PromptEvalCount int `json:"prompt_eval_count"`
+	EvalCount       int `json:"eval_count"`
+}
+
+// Usage is what one generate call cost, as Ollama counts it: the tokens of the prompt it evaluated
+// (prompt_eval_count — a prompt it has cached counts less) and of the reply (eval_count).
+type Usage struct {
+	PromptTokens, CompletionTokens int
 }
 
 // Generate runs a single-shot prompt with no chat history (phase context reset).
 func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
+	out, _, err := c.GenerateUsage(ctx, prompt)
+	return out, err
+}
+
+// GenerateUsage is Generate, with Ollama's counts of the call's tokens (F88).
+func (c *Client) GenerateUsage(ctx context.Context, prompt string) (string, Usage, error) {
 	if strings.TrimSpace(prompt) == "" {
-		return "", fmt.Errorf("empty prompt")
+		return "", Usage{}, fmt.Errorf("empty prompt")
 	}
 	body, err := json.Marshal(generateReq{
 		Model:  c.cfg.Model,
@@ -78,39 +93,40 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 		Stream: false,
 	})
 	if err != nil {
-		return "", err
+		return "", Usage{}, err
 	}
 	url := strings.TrimRight(c.cfg.BaseURL, "/") + "/api/generate"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return "", Usage{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := c.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("ollama request: %w", err)
+		return "", Usage{}, fmt.Errorf("ollama request: %w", err)
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return "", err
+		return "", Usage{}, err
 	}
 	if res.StatusCode >= 300 {
-		return "", fmt.Errorf("ollama HTTP %d: %s", res.StatusCode, truncate(redact.String(string(data)), 400))
+		return "", Usage{}, fmt.Errorf("ollama HTTP %d: %s", res.StatusCode, truncate(redact.String(string(data)), 400))
 	}
 	var parsed generateResp
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return "", fmt.Errorf("ollama decode: %w", err)
+		return "", Usage{}, fmt.Errorf("ollama decode: %w", err)
 	}
+	u := Usage{PromptTokens: parsed.PromptEvalCount, CompletionTokens: parsed.EvalCount}
 	if parsed.Error != "" {
-		return "", fmt.Errorf("ollama: %s", redact.String(parsed.Error))
+		return "", u, fmt.Errorf("ollama: %s", redact.String(parsed.Error))
 	}
 	out := strings.TrimSpace(parsed.Response)
 	if out == "" {
-		return "", fmt.Errorf("ollama: empty response")
+		return "", u, fmt.Errorf("ollama: empty response")
 	}
-	return out, nil
+	return out, u, nil
 }
 
 // BaseURL returns the configured Ollama base URL.
