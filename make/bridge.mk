@@ -3,33 +3,45 @@
 # file by its path in the DUDES clone, never a copy, so its goals cannot drift:
 #     -include .dudes-framework/make/bridge.mk
 # -include: a checkout without the clone (a CI) still runs its own goals. The engine is the clone's
-# binary (make -C <clone> build) unless DUDES_BIN names another; DUDES_CONFIG is your own dudes.json
-# (machine values: the model host, the worker's launcher), never the repo's.
+# binary (make -C <clone> build) unless DUDES_BIN names another; DUDES_CONFIG names your own dudes.json
+# (machine values: the model host, the worker's launcher) when it is not ./dudes.json, never the repo's.
 
 BRIDGE_ROOT := $(dir $(lastword $(MAKEFILE_LIST)))..
 BRIDGE_DEFAULT_GOAL := $(.DEFAULT_GOAL)
 DUDES_BIN ?= $(BRIDGE_ROOT)/bin/dudes$(if $(filter Windows_NT,$(OS)),.exe)
-DUDES_CONFIG ?= dudes.json
-SLICE_CONFIG = .worktrees/$(SLICE)/.dudes/dudes.json
+DUDES_CONFIG ?=
+
+# A goal's words reach the engine as typed. make would expand a $(…) in them, and running it when it
+# exports a word: so it takes each word's raw text ($(value …)), exports that copy, and keeps the word
+# itself out of the environment. A recipe quotes the copy ("$$BRIDGE_WHY"), and the shell never parses
+# its text again, whatever it holds: ' " # ; ` $.
+BRIDGE_ITEM := $(value ITEM)
+BRIDGE_SLICING := $(value SLICING)
+BRIDGE_SLICE := $(value SLICE)
+BRIDGE_TASK := $(value TASK)
+BRIDGE_ROLE := $(value ROLE)
+BRIDGE_WHY := $(value WHY)
+export BRIDGE_ITEM BRIDGE_SLICING BRIDGE_SLICE BRIDGE_TASK BRIDGE_ROLE BRIDGE_WHY DUDES_BIN DUDES_CONFIG
+unexport ITEM SLICING SLICE TASK ROLE WHY
 
 .PHONY: slice review approve redo land
 
 slice: ## Prepare ITEM's slice from SLICING and run it to its first pause (ITEM=BK-001 SLICING=slices/bk-001a.json)
-	@"$(DUDES_BIN)" -config "$(DUDES_CONFIG)" do $(ITEM) -slice "$(SLICING)" -run
+	@"$$DUDES_BIN" $(if $(DUDES_CONFIG),-config "$$DUDES_CONFIG") do "$$BRIDGE_ITEM" -slice "$$BRIDGE_SLICING" -run
 
-review: ## What SLICE waits on: its run and the waiting task's review packet (SLICE=bk-001a)
-	@"$(DUDES_BIN)" -config "$(SLICE_CONFIG)" status
+review: ## What SLICE waits on: its run, the waiting task's review packet or the worker's question (SLICE=bk-001a)
+	@"$$DUDES_BIN" -config ".worktrees/$$BRIDGE_SLICE/.dudes/dudes.json" status
 
-approve: ## Approve SLICE's waiting TASK as ROLE, then run to the next pause (SLICE= TASK= ROLE= [WHY=])
-	@"$(DUDES_BIN)" -config "$(SLICE_CONFIG)" decide $(TASK) -by "$(ROLE)" $(WHY)
-	@"$(DUDES_BIN)" -config "$(SLICE_CONFIG)" run
+approve: ## Approve SLICE's waiting TASK as ROLE — or answer its question with WHY — then run to the next pause (SLICE= TASK= ROLE= [WHY=])
+	@"$$DUDES_BIN" -config ".worktrees/$$BRIDGE_SLICE/.dudes/dudes.json" decide "$$BRIDGE_TASK" -by "$$BRIDGE_ROLE" "$$BRIDGE_WHY"
+	@"$$DUDES_BIN" -config ".worktrees/$$BRIDGE_SLICE/.dudes/dudes.json" run
 
 redo: ## Send SLICE's TASK back as ROLE with WHY, then run it to its next pause (SLICE= TASK= ROLE= WHY=)
-	@"$(DUDES_BIN)" -config "$(SLICE_CONFIG)" redo $(TASK) -by "$(ROLE)" "$(WHY)"
-	@"$(DUDES_BIN)" -config "$(SLICE_CONFIG)" run
+	@"$$DUDES_BIN" -config ".worktrees/$$BRIDGE_SLICE/.dudes/dudes.json" redo "$$BRIDGE_TASK" -by "$$BRIDGE_ROLE" "$$BRIDGE_WHY"
+	@"$$DUDES_BIN" -config ".worktrees/$$BRIDGE_SLICE/.dudes/dudes.json" run
 
 land: ## Merge the ended SLICE into this branch with ROLE's tag, then remove its worktree (SLICE= ROLE=)
-	@"$(DUDES_BIN)" land $(SLICE) -by "$(ROLE)"
+	@"$$DUDES_BIN" land "$$BRIDGE_SLICE" -by "$$BRIDGE_ROLE"
 
 # the including Makefile keeps its own default goal, wherever it includes this file
 .DEFAULT_GOAL := $(BRIDGE_DEFAULT_GOAL)

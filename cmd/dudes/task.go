@@ -31,12 +31,14 @@ func pauseDecision(cfg config.Config, st *runstate.State, tk contract.Task) int 
 	return 0
 }
 
+// nextOpenTask is the phase's first task that is not done: one still to run, or one that ran and
+// still waits for its review (approval: after, not approved) — a review comes before the next task.
 func nextOpenTask(con *contract.Contract, st *runstate.State) (contract.Task, bool) {
 	if con == nil || st == nil {
 		return contract.Task{}, false
 	}
 	for _, t := range con.TasksFor(st.Phase) {
-		if !st.HasCompleted(t.ID) {
+		if !st.HasCompleted(t.ID) || (t.NeedsAfterDecision() && !st.HasApproved(t.ID)) {
 			return t, true
 		}
 	}
@@ -76,6 +78,9 @@ func stepContractTask(cfg config.Config, st *runstate.State, con *contract.Contr
 	}
 
 	st.TaskID = tk.ID
+	if st.HasCompleted(tk.ID) { // it ran and its review is still due: it pauses again
+		return pauseDecision(cfg, st, tk)
+	}
 	if tk.NeedsDecision() && !st.HasApproved(tk.ID) {
 		return pauseDecision(cfg, st, tk)
 	}

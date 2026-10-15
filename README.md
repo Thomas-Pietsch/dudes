@@ -111,7 +111,7 @@ The commands you will meet:
 | `dudes verify [tag]` | Checks a seal from git alone: the signature, the seal commit, the run state |
 | `dudes check` | The two-axis consistency check, spec against standards |
 | `dudes doctor` | Probes git, Ollama, Aider, the packer and the config |
-| `dudes events` | The run's event log, with each worker call's local tokens and time, and who answered each pause; those are kept in git too, so they outlive a slice's worktree |
+| `dudes events` | The run's event log, with the local tokens and time of each worker call a step makes, and who answered each pause; those are kept in git too, so they outlive a slice's worktree |
 | `dudes do <item> -slice <file>` | Prepares one slice, a part of a work item, for the local workers: worktree, branch, pinned spec, a task for the failing tests and a task for the code. Each task you approve with `dudes decide` lands as one commit, so the branch merges as it is |
 | `dudes help` | The rest; [`FEATURES.md`](FEATURES.md) lists every capability |
 

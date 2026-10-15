@@ -156,6 +156,10 @@ func cmdDecide(configPath string, args []string) int {
 		fmt.Printf("%s %s, by %s\n%s\n", what, taskID, by, next)
 		return 0
 	}
+	if st.Waits(taskID) {
+		fmt.Printf("%s %s, by %s — the run still waits on %s: answer it first\n", what, taskID, by, st.TaskID)
+		return 0
+	}
 	fmt.Printf("%s %s, by %s — status %s (continue with dudes step / dudes run)\n", what, taskID, by, st.Status)
 	return 0
 }
@@ -196,6 +200,10 @@ func cmdRedo(configPath string, args []string) int {
 		return 1
 	}
 	logAnswer(cfg.Workspace, st, "redo", taskID+" "+note, by)
+	if st.Waits(taskID) {
+		fmt.Printf("sent %s back, by %s — the run still waits on %s: answer it first\n", taskID, by, st.TaskID)
+		return 0
+	}
 	fmt.Printf("sent %s back, by %s — the next step runs it again with your feedback\n", taskID, by)
 	return 0
 }

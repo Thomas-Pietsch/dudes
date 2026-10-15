@@ -119,6 +119,12 @@ func land(cfg config.Config, st *runstate.State, taskID string) {
 	}
 	msg := names.Landed() + "\n\n" + names.Trailers(itemTrailers(run.Commits), run.Passes)
 	sha, err := gitx.Squash(ws, run.Base, msg, notes)
+	if now, _ := gitx.HeadFull(ws); err != nil && now != "" && now != run.Commits[0].SHA {
+		// the commit is made, and something after it failed: the passes stay, and so does the truth
+		fmt.Fprintf(os.Stderr, "dudes: warning: %s landed as %s, but not in full: %v — the passes stay at %s\n", taskID, shortSHA(now), err, kept)
+		events.Log(cfg.Workspace, st.RunID, "land", st.Phase, fmt.Sprintf("%s %s partial kept=%s: %v", taskID, shortSHA(now), kept, err))
+		return
+	}
 	if err != nil {
 		if derr := gitx.DeleteRef(ws, kept); derr != nil {
 			err = fmt.Errorf("%v (and %v)", err, derr)
@@ -292,6 +298,22 @@ func cmdLand(args []string) int {
 	if branch == "" || into == "" || branch == into {
 		return fail("slice %s: its branch %q cannot be merged into %q — check out the branch it came from", id, branch, into)
 	}
+	// the worktree and the pins are removed once the merge is in: a change not committed there would go
+	// with them, so it refuses first and names the files
+	pins := slicePins(wt, cfg.Product, id)
+	var dirty []string
+	for _, d := range append([]string{wt}, pins...) {
+		paths, err := gitx.ChangedPaths(d)
+		if err != nil {
+			return fail("%v", err)
+		}
+		for _, p := range paths {
+			dirty = append(dirty, filepath.ToSlash(filepath.Join(relTo(root, d), p)))
+		}
+	}
+	if len(dirty) > 0 {
+		return fail("slice %s has changes no commit holds, which landing would remove: %s — commit or discard them first", id, strings.Join(dirty, ", "))
+	}
 	if err := gitx.MergeNoFF(root, branch, handoff.MergeMessage(con, branch, role)); err != nil {
 		return fail("%v\nnothing landed: the merge is taken back", err)
 	}
@@ -300,15 +322,9 @@ func cmdLand(args []string) int {
 
 	// the merge is in: what only the slice's run needed goes, its pins first (the worktree names them)
 	var left []string
-	if set, ok, err := specset.Load(wt, cfg.Product); err == nil && ok {
-		for name := range set.Roots {
-			pin, err := set.RootAbs(wt, name)
-			if err != nil || filepath.Base(pin) != "spec-"+id || filepath.Base(filepath.Dir(pin)) != ".worktrees" {
-				continue // not a pin this slice made
-			}
-			if err := gitx.RemoveWorktree(filepath.Dir(filepath.Dir(pin)), pin); err != nil {
-				left = append(left, err.Error())
-			}
+	for _, pin := range pins {
+		if err := gitx.RemoveWorktree(filepath.Dir(filepath.Dir(pin)), pin); err != nil {
+			left = append(left, err.Error())
 		}
 	}
 	if err := gitx.RemoveWorktree(root, wt); err != nil {
@@ -321,6 +337,42 @@ func cmdLand(args []string) int {
 	}
 	fmt.Printf("removed .worktrees/%s, its spec pins and %s; its run notes and kept passes stay\n", id, branch)
 	return 0
+}
+
+// escalationAnswerCmd is how a worker's escalation (F74) is answered: dudes decide on the waiting task
+// with the answer — on a slice's branch, the bridge's goal that runs it (make approve with WHY).
+func escalationAnswerCmd(configPath string, cfg config.Config, st *runstate.State) string {
+	cmd := dudesCmd(configPath, "decide", st.TaskID, "-by", `"<your role>"`, `"<answer>"`)
+	if con, ok, _ := contract.Load(cfg.Workspace); ok && con.NamesTests() {
+		cmd = fmt.Sprintf(`make approve SLICE=%s TASK=%s ROLE="<your role>" WHY="<answer>", or %s`, con.ID, st.TaskID, cmd)
+	}
+	return cmd
+}
+
+// slicePins are the spec roots the slice's worktree wt names that are this slice's own pinned
+// worktrees (<root repo>/.worktrees/spec-<id>), by absolute path.
+func slicePins(wt, product, id string) []string {
+	set, ok, err := specset.Load(wt, product)
+	if err != nil || !ok {
+		return nil
+	}
+	var pins []string
+	for _, name := range sortedKeys(set.Roots) {
+		pin, err := set.RootAbs(wt, name)
+		if err == nil && filepath.Base(pin) == "spec-"+id && filepath.Base(filepath.Dir(pin)) == ".worktrees" {
+			pins = append(pins, pin)
+		}
+	}
+	return pins
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 // endedRun is what a command says about a run that ended (StatusEnded): in the slice's worktree the

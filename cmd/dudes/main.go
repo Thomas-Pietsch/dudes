@@ -60,6 +60,13 @@ func run(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
+	// a -config that names no file is a typo (a slice that is not there), not a wish for the defaults
+	named := false
+	fs.Visit(func(f *flag.Flag) { named = named || f.Name == "config" })
+	if _, err := os.Stat(*configPath); named && err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: -config %s: %v\n", *configPath, err)
+		return 1
+	}
 
 	if *showVersion {
 		fmt.Println(version.Version)
@@ -307,6 +314,7 @@ func cmdStatus(configPath string, asJSON bool) int {
 	}
 	if st.Escalation != "" {
 		run["escalation"] = st.Escalation
+		run["answer"] = escalationAnswerCmd(configPath, cfg, st)
 	}
 	done, total := contractProgress(cfg, st)
 	if total > 0 {
@@ -360,6 +368,10 @@ func cmdStatus(configPath string, asJSON bool) int {
 	}
 	if st.Status == runstate.StatusWaitingDecision {
 		fmt.Printf("decision:  waiting — dudes decide %s\n", st.TaskID)
+		if st.Escalation != "" { // the worker's question, and how to answer it (F74)
+			fmt.Printf("escalation: %s\n", st.Escalation)
+			fmt.Printf("answer:    %s\n", escalationAnswerCmd(configPath, cfg, st))
+		}
 	}
 	if st.TaskID != "" {
 		fmt.Printf("task:      %s\n", st.TaskID)
@@ -1536,6 +1548,12 @@ func cmdReject(configPath, feedback string) int {
 }
 
 func advanceLocked(cfg config.Config, st *runstate.State) int {
+	// a slice never leaves implementation: its QR is the spec repository's, and a later phase would
+	// commit the engine's own QR and docs into the branch the role merges (F88)
+	if con, ok, _ := contract.Load(cfg.Workspace); ok && con.NamesTests() && st.Phase == phase.Implementation {
+		fmt.Fprintf(os.Stderr, "dudes: slice %s ends with its tasks — it does not leave %s\n", con.ID, st.Phase)
+		return 1
+	}
 	reg := phase.Default()
 	next, ok := reg.Next(st.Phase)
 	if !ok {
@@ -1658,9 +1676,10 @@ Usage:
                                        after) adds its review packet (F88): the task's diff of its writable
                                        paths since it first ran, the gate run on HEAD with the tests that
                                        passed and failed, the worker's last reply — each cut to a bound,
-                                       with the git command or file that holds the whole
+                                       with the git command or file that holds the whole. A worker's
+                                       escalation shows its question and the answer command
   dudes doctor                         probe git/ollama/aider/packer/config
-  dudes events [-n N] [-json]          show last N run events (.dudes/events.jsonl). Each worker call is a
+  dudes events [-n N] [-json]          show last N run events (.dudes/events.jsonl). Each worker call of a step is a
                                        worker event: its local tokens (Ollama's counts, or Aider's own
                                        report) and its duration; a decide or redo names who answered.
                                        Those three are the ledger, kept in git too (refs/notes/dudes/ledger):
@@ -1712,7 +1731,9 @@ Usage:
   dudes land <slice> -by <role>        from the dev repo's root, once the slice's run ended: git merge --no-ff
                                        of feature/<slice> into the branch checked out there, the role's tag
                                        and the item on the merge commit (hooks run; a stopped merge is taken
-                                       back), then its spec pins, worktree and branch go (F88)
+                                       back), then its spec pins, worktree and branch go (F88); refused
+                                       first, naming the files, when the worktree or a pin has a change no
+                                       commit holds
   dudes item check [-json]             spec-set consistency C1–C8 (needs .dudes/profile.json)
   dudes item list | board              work items + status from QR and acceptance runs (F70)
   dudes item pack <ID>… [-all] [-budget N]

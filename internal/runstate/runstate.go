@@ -137,11 +137,21 @@ func (st *State) Reopen(taskID, note string, by Decider) {
 	if st.Redo == nil {
 		st.Redo = map[string]string{}
 	}
-	st.TaskID, st.Redo[taskID] = taskID, note
+	st.Redo[taskID] = note
 	st.decided(taskID, by)
+	if st.Waits(taskID) {
+		return // the pause holds until its own task is answered
+	}
+	st.TaskID = taskID
 	if st.Status == StatusWaitingDecision || st.Status == StatusEnded { // a slice that ended opens again
 		st.Status = StatusRunning
 	}
+}
+
+// Waits reports whether the run waits for a decision on a task other than taskID: an answer to
+// taskID is recorded then, and the pause holds.
+func (st *State) Waits(taskID string) bool {
+	return st != nil && st.Status == StatusWaitingDecision && st.TaskID != taskID
 }
 
 // TaskFeedback is the human feedback the current task's worker gets: a run-level reject and, when
@@ -190,15 +200,19 @@ func (st *State) Approve(taskID, note string, by Decider) {
 	st.Answer(taskID, note, by)
 }
 
-// Answer records a decision on a task and who made it, and lets a waiting run go on — without
-// approving the task: the answer to a worker's escalation (F74) goes to the task's next run, and a
-// task that pauses after its run (approval: after) still pauses for its review (F88).
+// Answer records a decision on a task and who made it, and lets a run that waits on that task go on
+// — without approving the task: the answer to a worker's escalation (F74) goes to the task's next run,
+// and a task that pauses after its run (approval: after) still pauses for its review (F88). A pause on
+// another task holds.
 func (st *State) Answer(taskID, note string, by Decider) {
 	if st == nil || taskID == "" {
 		return
 	}
-	st.Decision = note
 	st.decided(taskID, by)
+	if st.Waits(taskID) {
+		return // the pause holds until its own task is answered
+	}
+	st.Decision = note
 	if st.Status == StatusWaitingDecision {
 		st.Status = StatusRunning
 	}

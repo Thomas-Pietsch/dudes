@@ -252,3 +252,24 @@ func TestStartTaskKeepsTheFirstStart(t *testing.T) {
 		t.Fatalf("a later start replaced the first: %+v", st.TaskBase)
 	}
 }
+
+// A pause holds until its own task is answered (F88): an approval or a redo of another task is
+// recorded — who, and the redo's note — and the run still waits on its task.
+func TestAPauseHoldsForItsOwnTask(t *testing.T) {
+	by := runstate.Decider{Identity: "dudes-test <dudes@test>", Role: "QA Engineer"}
+	st := &runstate.State{Status: runstate.StatusWaitingDecision, TaskID: "s-code", Decision: "earlier"}
+	st.MarkCompleted("s-tests")
+	st.TaskID = "s-code"
+	st.Reopen("s-tests", "name the version", by)
+	st.Approve("s-tests", "fine now", by)
+	if st.Status != runstate.StatusWaitingDecision || st.TaskID != "s-code" || st.Decision != "earlier" || !st.Waits("s-tests") || st.Waits("s-code") {
+		t.Fatalf("the pause on s-code did not hold: %+v", st)
+	}
+	if st.Redo["s-tests"] != "name the version" || !st.HasApproved("s-tests") || st.HasCompleted("s-tests") || st.DecidedBy["s-tests"] != by {
+		t.Fatalf("the answers on s-tests are not recorded: %+v", st)
+	}
+	st.Approve("s-code", "", by)
+	if st.Status != runstate.StatusRunning {
+		t.Fatalf("the answer to the waited task did not release the pause: %+v", st)
+	}
+}

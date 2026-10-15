@@ -408,14 +408,18 @@ func TestBridgeGoalsLandASlice(t *testing.T) {
 	gitIn(t, f.dev, "add", "Makefile")
 	gitIn(t, f.dev, "commit", "-qm", "chore(make): the engine's goals [🔹Developer]")
 	base := gitIn(t, f.dev, "rev-parse", "HEAD")
-	mk := func(goal string, vars ...string) string {
-		t.Helper()
+	try := func(goal string, vars ...string) (string, error) {
 		args := append([]string{"-C", f.dev, goal, "DUDES_BIN=" + filepath.ToSlash(bin), "DUDES_CONFIG=" + filepath.ToSlash(user)}, vars...)
 		out, err := exec.Command("make", args...).CombinedOutput()
+		return string(out), err
+	}
+	mk := func(goal string, vars ...string) string {
+		t.Helper()
+		out, err := try(goal, vars...)
 		if err != nil {
 			t.Fatalf("make %s: %v\n%s", goal, err, out)
 		}
-		return string(out)
+		return out
 	}
 
 	mk("slice", "ITEM=BL-002", "SLICING="+filepath.ToSlash(f.slicing(t, "bl-002a", nil)))
@@ -423,7 +427,33 @@ func TestBridgeGoalsLandASlice(t *testing.T) {
 		t.Errorf("make review shows no review packet of the red task:\n%s", out)
 	}
 	mk("approve", "SLICE=bl-002a", "TASK=bl-002a-tests", "ROLE=QA Engineer")
-	mk("approve", "SLICE=bl-002a", "TASK=bl-002a-code", "ROLE=Developer")
+	// a WHY that neither make nor the shell may parse: quotes, a comment sign, a command separator,
+	// make's and the shell's substitutions
+	why := `it's "fine"; # $(shell echo PWNED) $(echo no) ` + "`echo no`" + ` $HOME $$x`
+	if out := mk("approve", "SLICE=bl-002a", "TASK=bl-002a-code", "ROLE=Developer", "WHY="+why); strings.Contains(out, "PWNED") {
+		t.Errorf("make ran a $(shell …) from WHY:\n%s", out)
+	}
+	ledger, _ := events.Ledger(f.dev)
+	if last := ledger[len(ledger)-1]; last.Type != "decide" || last.Detail != "bl-002a-code "+why || last.Role != "Developer" {
+		t.Errorf("the approval as recorded: %+v\nwant the note %q", last, why)
+	}
+	// a change no commit holds, in the worktree or in a pin, stops the landing before the merge
+	for _, file := range []string{filepath.Join(f.worktree("bl-002a"), "notes.txt"), filepath.Join(f.spec, ".worktrees", "spec-bl-002a", "BENCH_PRD.md")} {
+		if err := os.WriteFile(file, []byte("unsaved work\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := try("land", "SLICE=bl-002a", "ROLE=Developer"); err == nil || !strings.Contains(out, filepath.Base(file)) || !strings.Contains(out, "commit or discard them first") {
+			t.Errorf("land with %s changed: %v\n%s", file, err, out)
+		}
+		if gitIn(t, f.dev, "rev-parse", "HEAD") != base {
+			t.Fatal("a refused landing merged")
+		}
+		if strings.HasSuffix(file, ".md") {
+			gitIn(t, filepath.Dir(file), "checkout", "--", filepath.Base(file))
+		} else if err := os.Remove(file); err != nil {
+			t.Fatal(err)
+		}
+	}
 	mk("land", "SLICE=bl-002a", "ROLE=Developer")
 
 	subjects := strings.Split(gitIn(t, f.dev, "log", "--format=%s", base+"..HEAD"), "\n")
@@ -455,6 +485,185 @@ func TestBridgeGoalsLandASlice(t *testing.T) {
 	}
 	if gitIn(t, f.dev, "status", "--porcelain") != "" {
 		t.Error("the landing left changes")
+	}
+}
+
+// A pause holds until its own task is answered (F88). Two reviewers found that a redo of the red tests
+// while the code waited released the pause, and the approval of the tests then ran the slice on into
+// QA and docs, which commit to the item branch. Now the redo is recorded and the run still waits; a task
+// that ran and still waits for its review pauses again; and a slice never leaves implementation.
+func TestPauseHoldsForItsOwnTask(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("no sh")
+	}
+	f := newHandoffFixture(t)
+	script := filepath.Join(t.TempDir(), "worker.sh")
+	if err := os.WriteFile(script, []byte(fakeWorker), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	user := filepath.Join(f.parent, "worker.json")
+	if err := os.WriteFile(user, []byte(`{"aider": {"launch": ["sh", "`+filepath.ToSlash(script)+`"], "timeout_sec": 300}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepareSlice(user, f.dev, sliceArgs{slicing: f.slicing(t, "bl-002a", nil)}); err != nil {
+		t.Fatal(err)
+	}
+	wt := f.worktree("bl-002a")
+	cfgPath := filepath.Join(wt, ".dudes", "dudes.json")
+	waitsOn := func(task string) {
+		t.Helper()
+		st, _, _ := runstate.Load(wt)
+		if st.Status != runstate.StatusWaitingDecision || st.TaskID != task || st.Phase != phase.Implementation {
+			t.Fatalf("the run: %s on %s at %s, want waiting on %s at implementation", st.Status, st.TaskID, st.Phase, task)
+		}
+	}
+	cmdStep(cfgPath, false, false, false)
+	if code := cmdDecide(cfgPath, []string{"bl-002a-tests"}); code != 0 {
+		t.Fatalf("decide: %d", code)
+	}
+	cmdStep(cfgPath, false, false, false)
+	waitsOn("bl-002a-code")
+
+	// the tests sent back, then approved, while the code waits: both recorded, the pause holds
+	if code := cmdRedo(cfgPath, []string{"bl-002a-tests", "-by", "QA Engineer", "name", "the", "version"}); code != 0 {
+		t.Fatalf("redo: %d", code)
+	}
+	waitsOn("bl-002a-code")
+	if code := cmdDecide(cfgPath, []string{"bl-002a-tests", "-by", "QA Engineer"}); code != 0 {
+		t.Fatalf("decide: %d", code)
+	}
+	waitsOn("bl-002a-code")
+	if code := cmdRun(cfgPath, "", false, false, false, ""); code != 0 {
+		t.Fatalf("run: %d", code)
+	}
+	waitsOn("bl-002a-code")
+	if st, _, _ := runstate.Load(wt); st.DecidedBy["bl-002a-tests"].Role != "QA Engineer" || st.Redo["bl-002a-tests"] != "name the version" {
+		t.Errorf("the answers on the other task are not recorded: %+v", st)
+	}
+
+	// a pause released by other means: the tests run again, and the code, which ran and still waits
+	// for its review, pauses again — the slice does not leave implementation
+	st, _, _ := runstate.Load(wt)
+	st.Status = runstate.StatusRunning
+	if err := runstate.Save(wt, st); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdRun(cfgPath, "", false, false, false, ""); code != 0 {
+		t.Fatalf("run: %d", code)
+	}
+	waitsOn("bl-002a-code")
+	for _, scratch := range []string{"bench_QR.md", "docs/USER.md"} {
+		if _, err := os.Stat(filepath.Join(wt, filepath.FromSlash(scratch))); !os.IsNotExist(err) {
+			t.Errorf("%s was written into the item branch (%v)", scratch, err)
+		}
+	}
+	st, _, _ = runstate.Load(wt)
+	st.Status = runstate.StatusRunning
+	if err := runstate.Save(wt, st); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdAdvance(cfgPath); code == 0 {
+		t.Error("dudes advance moved the slice out of implementation")
+	}
+	if st, _, _ := runstate.Load(wt); st.Phase != phase.Implementation {
+		t.Errorf("the slice is at %s", st.Phase)
+	}
+}
+
+// At a worker's escalation the review shows the worker's question and how to answer it (F74, F88):
+// the slice's waiting task has no review packet then, and before, make review showed neither.
+func TestStatusShowsTheEscalation(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("no sh")
+	}
+	f := newHandoffFixture(t)
+	script := filepath.Join(t.TempDir(), "worker.sh")
+	asks := strings.Replace(fakeWorker, "else\ncat > semver/semver.go", "else\necho 'BLOCKED: AC-3 names no invalid input — which one?'\nexit 0\ncat > semver/semver.go", 1)
+	if err := os.WriteFile(script, []byte(asks), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	user := filepath.Join(f.parent, "worker.json")
+	if err := os.WriteFile(user, []byte(`{"aider": {"launch": ["sh", "`+filepath.ToSlash(script)+`"], "timeout_sec": 300}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepareSlice(user, f.dev, sliceArgs{slicing: f.slicing(t, "bl-002a", nil)}); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(f.worktree("bl-002a"), ".dudes", "dudes.json")
+	cmdStep(cfgPath, false, false, false)
+	if code := cmdDecide(cfgPath, []string{"bl-002a-tests"}); code != 0 {
+		t.Fatalf("decide: %d", code)
+	}
+	cmdStep(cfgPath, false, false, false)
+	_, out, _ := captured(func() int { return cmdStatus(cfgPath, false) })
+	for _, want := range []string{"escalation: BLOCKED: AC-3 names no invalid input — which one?",
+		`answer:    make approve SLICE=bl-002a TASK=bl-002a-code ROLE="<your role>" WHY="<answer>", or dudes`, `decide bl-002a-code -by "<your role>" "<answer>"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("status lacks %q:\n%s", want, out)
+		}
+	}
+	_, js, _ := captured(func() int { return cmdStatus(cfgPath, true) })
+	var status struct {
+		Run struct{ Escalation, Answer string } `json:"run"`
+	}
+	if err := json.Unmarshal([]byte(js), &status); err != nil || status.Run.Answer == "" || !strings.Contains(status.Run.Escalation, "which one?") {
+		t.Errorf("status -json: %v\n%s", err, js)
+	}
+}
+
+// A -config that names no file is refused: a mistyped SLICE in a bridge goal would otherwise run on
+// the defaults — the dev repo's root — and exit 0.
+func TestAMissingConfigIsRefused(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), ".worktrees", "typo", ".dudes", "dudes.json")
+	code, _, errOut := captured(func() int { return run([]string{"-config", missing, "status"}) })
+	if code != 1 || !strings.Contains(errOut, "-config "+missing) {
+		t.Errorf("status with a missing -config: exit %d\n%s", code, errOut)
+	}
+}
+
+// A squash that fails after its commit moved HEAD — here a notes ref git cannot lock — has landed in
+// part: the kept passes stay, and the warning says what happened instead of "nothing changed".
+func TestLandTaskKeepsThePassesWhenTheSquashHalfFails(t *testing.T) {
+	ws := t.TempDir()
+	gitIn(t, ws, "init", "-q", "-b", "feature/bk-001a")
+	gitIn(t, ws, "config", "user.email", "dudes@test")
+	gitIn(t, ws, "config", "user.name", "dudes-test")
+	if err := os.WriteFile(filepath.Join(ws, ".git", "info", "exclude"), []byte("/.dudes/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := gitx.EmptyCommit(ws, "chore(BK-001a): start the run [🔹engine]\n\nItem: BK-001"); err != nil {
+		t.Fatal(err)
+	}
+	con := &contract.Contract{ID: "bk-001a", Product: "bookshelf", Item: "BK-001", Tests: []string{"x_test.go"},
+		Acceptance: []contract.Acceptance{{ID: "bk-001-ac-2", Kind: "behavior", Text: "AC-2 …"}},
+		Tasks:      []contract.Task{{ID: "bk-001a-code", Phase: phase.Implementation, Approval: "after"}}}
+	if err := contract.Save(ws, con); err != nil {
+		t.Fatal(err)
+	}
+	names, _ := handoff.NamesFor(con, "bk-001a-code")
+	if err := os.WriteFile(filepath.Join(ws, "x.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := gitx.AddCommit(ws, []string{"x.go"}, names.Pass(1)+"\n\nItem: BK-001\nTask: bk-001a-code"); err != nil {
+		t.Fatal(err)
+	}
+	head := gitIn(t, ws, "rev-parse", "HEAD")
+	if err := gitx.AddNote(ws, testrun.NotesRef, "# ok: true\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ws, ".git", "refs", "notes", "dudes", "test.lock"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st := &runstate.State{RunID: "r", Phase: phase.Implementation, Completed: []string{"bk-001a-code"}, Approved: []string{"bk-001a-code"}}
+	_, _, errOut := captured(func() int { landTask(config.Config{Workspace: ws, Product: "bookshelf"}, st, "bk-001a-code"); return 0 })
+	if gitIn(t, ws, "rev-parse", "HEAD") == head || gitIn(t, ws, "log", "-1", "--format=%s") != names.Landed() {
+		t.Fatal("the squash commit was not made")
+	}
+	if got := gitIn(t, ws, "rev-parse", "refs/dudes/passes/bk-001a/bk-001a-code/1"); got != head {
+		t.Errorf("the kept passes are gone: %s", got)
+	}
+	if !strings.Contains(errOut, "landed as") || !strings.Contains(errOut, "not in full") || strings.Contains(errOut, "stay as they are") {
+		t.Errorf("the warning:\n%s", errOut)
 	}
 }
 
