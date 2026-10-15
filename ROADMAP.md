@@ -2,7 +2,7 @@
 
 > **The path:** the lanes DUDES moves in, the stage each lane is at, what counts as that stage working, and where it all leads. Work items are in `TODO.md` (every line names its lane), verdicts and tool actions in `TREND.md`, design in `CORE.md`. Each file's job: `CORE.md` §14. This file changes as fast as the world does; `git log` is its history. `make roadmap-check` ties `TODO.md` to it and says when a step back is due (`skills/framework/roadmap`).
 
-**Reviewed:** 2026-10-14 · `f5d67c6` · first version, challenged by fresh eyes on another model: no exit check moved since 2026-10-09, and lane `R` had no Now line. `R`'s release friction moved to Now. `E1`'s exit check now names distinct items, an outside reviewer and a ledger, and the replay is no longer called a regression test. The lanes and exit checks await the human's word.
+**Reviewed:** 2026-10-15 · `2e81fa9` · carried over to the public history, unchanged since the first step back on 2026-10-14, which fresh eyes on another model challenged: no exit check moved since 2026-10-09, and lane `R` had no Now line. `R`'s release friction moved to Now. `E1`'s exit check now names distinct items, an outside reviewer and a ledger, and the replay is no longer called a regression test. The lanes and exit checks await the human's word.
 
 ## Lanes
 
