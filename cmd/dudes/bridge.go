@@ -131,11 +131,18 @@ func cmdDecide(configPath string, args []string) int {
 		}
 	}
 	st.Approve(taskID, note)
+	if !answersEscalation {
+		landTask(cfg, st, taskID) // F88: on a slice's branch the task lands as one commit; the last ends the run
+	}
 	if err := runstate.Save(cfg.Workspace, st); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
 	}
 	events.Log(cfg.Workspace, st.RunID, "decide", st.Phase, taskID+" "+note)
+	if next, done := sliceDone(cfg, st); done {
+		fmt.Printf("decided %s\n%s\n", taskID, next)
+		return 0
+	}
 	fmt.Printf("decided %s — status %s (continue with dudes step / dudes run)\n", taskID, st.Status)
 	return 0
 }

@@ -146,13 +146,18 @@ func inScope(ws, rel string, pats []string) []string {
 
 // implementConverged runs pass 1 (the work) and, with convergence on, fresh
 // re-analysis passes until one changes nothing (F72). Every pass that changes
-// files is its own commit — git records how the task converged.
-func implementConverged(cfg config.Config, st *runstate.State, ws string, pats []string, invoke func(string) (string, error), message, subject, trailers string) int {
+// files is its own commit — git records how the task converged. subject names
+// the step's commit-th commit, made in pass pass (passSubjects).
+func implementConverged(cfg config.Config, st *runstate.State, ws string, pats []string, invoke func(string) (string, error), message string, subject func(commit, pass int) string, trailers string) int {
 	format := formatter(cfg, ws)
-	changed, esc, err := implPass(ws, pats, invoke, format, message, subject, trailers)
+	made := 0
+	changed, esc, err := implPass(ws, pats, invoke, format, message, subject(made+1, 1), trailers)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
+	}
+	if changed {
+		made++
 	}
 	if esc != nil {
 		return escalate(cfg, st, *esc)
@@ -169,10 +174,12 @@ func implementConverged(cfg config.Config, st *runstate.State, ws string, pats [
 	}
 	var stop *extract.Escalation
 	n, err := converge.Run(max, func(n int) (bool, error) {
-		subj := fmt.Sprintf("chore(phase): %s pass %d [🔹engine]", phase.Implementation, n)
-		ch, e, err := implPass(ws, pats, invoke, format, message+converge.Instruction(n), subj, trailers)
+		ch, e, err := implPass(ws, pats, invoke, format, message+converge.Instruction(n), subject(made+1, n), trailers)
 		if err != nil {
 			return false, err
+		}
+		if ch {
+			made++
 		}
 		if e != nil {
 			stop = e

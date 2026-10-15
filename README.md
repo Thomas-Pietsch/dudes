@@ -99,7 +99,7 @@ The sequence is fixed and owned by the Go engine, not by a model. Each step is o
 - The tag is signed when your git can sign: `user.signingkey` set, with `gpg.format` openpgp, ssh or x509. Without a key it is an annotated tag and `dudes seal` says `unsigned`. The seal commit names you in a `Sealed-by:` trailer. `"seal": {"require_signature": true}` in `dudes.json` refuses an unsigned seal before anything is made.
 - `dudes verify [tag]` checks a seal from git alone, the newest one by default: git's own `git tag -v` accepts the signature, the tag points at the seal commit with its `Sealed-by:` trailer, and the run's state says sealed. It exits 1 when one of them fails. A signature proves the key, not who held it: keep the key where an agent in your shell cannot use it, behind a passphrase or on a hardware key.
 
-**Git as the record.** Every step is a commit: `chore(phase): <phase> [🔹engine]`, `chore(phase): seal [🔹human]`. The run's state lives in git notes (`refs/notes/dudes/run`), next to spec freezes, test runs and acceptance results (`refs/notes/dudes/*`). No server, no database, no dashboard: `git log` is the audit trail. Notes and tags stay in your clone until you push them ([For companies](#for-companies) shows how).
+**Git as the record.** Every step is a commit: `chore(phase): <phase> [🔹engine]`, `chore(phase): seal [🔹human]`; on a work item's branch the commit names the task, `feat(BK-001a): code for AC-1 and AC-3, pass 2 [🔹engine]`. The run's state lives in git notes (`refs/notes/dudes/run`), next to spec freezes, test runs and acceptance results (`refs/notes/dudes/*`). No server, no database, no dashboard: `git log` is the audit trail. Notes and tags stay in your clone until you push them ([For companies](#for-companies) shows how).
 
 The commands you will meet:
 
@@ -112,7 +112,7 @@ The commands you will meet:
 | `dudes check` | The two-axis consistency check, spec against standards |
 | `dudes doctor` | Probes git, Ollama, Aider, the packer and the config |
 | `dudes events` | The run's event log |
-| `dudes do <item> -slice <file>` | Prepares one slice, a part of a work item, for the local workers: worktree, branch, pinned spec, a task for the failing tests and a task for the code |
+| `dudes do <item> -slice <file>` | Prepares one slice, a part of a work item, for the local workers: worktree, branch, pinned spec, a task for the failing tests and a task for the code. Each task you approve with `dudes decide` lands as one commit, so the branch merges as it is |
 | `dudes help` | The rest; [`FEATURES.md`](FEATURES.md) lists every capability |
 
 ## What is real today, and what is vision

@@ -32,6 +32,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/product"
 	"github.com/Thomas-Pietsch/dudes/internal/recipe"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
+	"github.com/Thomas-Pietsch/dudes/internal/scope"
 	"github.com/Thomas-Pietsch/dudes/internal/skill"
 	"github.com/Thomas-Pietsch/dudes/internal/spec"
 	"github.com/Thomas-Pietsch/dudes/internal/specset"
@@ -496,6 +497,10 @@ func cmdAdvance(configPath string) int {
 		fmt.Fprintln(os.Stderr, "dudes: already sealed")
 		return 1
 	}
+	if st.Status == runstate.StatusEnded {
+		fmt.Fprintln(os.Stderr, "dudes: "+endedRun(cfg, st))
+		return 1
+	}
 	return advanceLocked(cfg, st)
 }
 
@@ -582,6 +587,10 @@ func cmdRun(configPath, prompt string, stub, withPack, skipTest bool, until stri
 			fmt.Println("run: already sealed")
 			return 0
 		}
+		if st.Status == runstate.StatusEnded {
+			fmt.Println("run: " + endedRun(cfg, st))
+			return 0
+		}
 		fmt.Printf("run: step %d at phase %s\n", i+1, st.Phase)
 		if code := stepOnce(cfg, st, stub, withPack, skipTest); code != 0 {
 			return code
@@ -603,6 +612,12 @@ func stepOnce(cfg config.Config, st *runstate.State, stub, withPack, skipTest bo
 	if st.Phase == phase.Sealed {
 		fmt.Fprintln(os.Stderr, "dudes: already sealed")
 		return 1
+	}
+	// An item slice ends with its last task (F88): its QR is the spec repository's, and a later phase
+	// would commit the engine's own QR and docs into the branch the role merges.
+	if st.Status == runstate.StatusEnded {
+		fmt.Println(endedRun(cfg, st))
+		return 0
 	}
 
 	con, _, err := contract.Load(cfg.Workspace)
@@ -999,7 +1014,6 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 		fmt.Printf("gate: last run on this commit failed — its output, %d named file(s) to edit and %d to read go to the worker\n", len(gateFiles), len(gateRefs))
 	}
 	message := msg.String() + escalationAnswer(st)
-	subject := fmt.Sprintf("chore(phase): %s [🔹engine]", phase.Implementation)
 	worker = strings.ToLower(strings.TrimSpace(worker))
 	ws := cfg.Workspace
 	if worktree.Want(cfg.Worktree, tools) {
@@ -1011,6 +1025,7 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 			fmt.Printf("worktree: %s (%s)\n", abs, branch)
 		}
 	}
+	subject, trailers := passSubjects(cfg, st, ws, trailers)
 	clearScope, err := bindScope(cfg, ws, st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
@@ -1020,12 +1035,18 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 	logPromptSize(cfg, st, phase.Implementation, message)
 
 	if stub || worker == "stub" {
+		// the stub's file is no worker's output a task asked for: outside the task's scope it is not
+		// written, so it never lands on an item branch (F88)
+		if rel := aider.StubImplRel(cfg.Product); len(scopePats) > 0 && !scope.Inside(rel, scopePats) {
+			fmt.Printf("stub: %s is outside the task's writable paths — nothing written\n", rel)
+			return 0
+		}
 		rel, err := aider.WriteStubImpl(ws, cfg.Product)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "dudes: stub impl: %v\n", err)
 			return 1
 		}
-		if err := gitx.AddCommit(ws, []string{rel}, withTrailers(subject, trailers)); err != nil {
+		if err := gitx.AddCommit(ws, []string{rel}, withTrailers(subject(1, 1), trailers)); err != nil {
 			fmt.Fprintf(os.Stderr, "dudes: git: %v\n", err)
 			return 1
 		}
@@ -1622,7 +1643,10 @@ Usage:
                                        Reads the repo's tracked dudes/: profile.json; specset.json
                                        (roots {"<name>": {"repo": "../spec", "pin": "release/x-v1.0"}},
                                        entries as in .dudes/specset.json); config.json (a dudes.json
-                                       without workspace and machine values). The model host comes from
+                                       without workspace and machine values). A repo of several products
+                                       keeps them per product in dudes/<product>/, its config.json over
+                                       the shared dudes/config.json; the item's ID finds its product
+                                       (its profile's ID family). The model host comes from
                                        DUDES_OLLAMA_URL, else your dudes.json, else OLLAMA_API_BASE,
                                        never from the repo. The slicing: {"id": "bk-001a", "item",
                                        "acceptance": ["AC-2"], "scope": ["pkg/*"], "tests": ["pkg/x_test.go"],
@@ -1639,7 +1663,10 @@ Usage:
   dudes specset [init]                 show or write .dudes/specset.json (original names)
   dudes contract                       show/validate .dudes/contract.json
   dudes evidence                       show requirement→test→run rows
-  dudes decide <task-id> [note]        approve a waiting in-phase task (F66)
+  dudes decide <task-id> [note]        approve a waiting in-phase task (F66). On a slice's branch (do -slice)
+                                       a finished task lands as one commit, its passes kept under
+                                       refs/dudes/passes/<slice>/<task>/<n>; once every task is decided the
+                                       run ends (status ended) and the branch merges as it is (F88)
   dudes redo <task-id> <feedback>      send a task back: its next run gets the feedback (a finished one reopens)
   dudes item check [-json]             spec-set consistency C1–C8 (needs .dudes/profile.json)
   dudes item list | board              work items + status from QR and acceptance runs (F70)

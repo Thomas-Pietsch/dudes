@@ -62,6 +62,9 @@ func firstTaskInPhase(con *contract.Contract, st *runstate.State) bool {
 func stepContractTask(cfg config.Config, st *runstate.State, con *contract.Contract, rec *recipe.Recipe, hasRecipe, stub, skipTest bool, discipline string) int {
 	tk, ok := nextOpenTask(con, st)
 	if !ok {
+		if code, ended := endSliceStep(cfg, st); ended {
+			return code
+		}
 		if err := gate.CheckLeave(cfg.Workspace, cfg.Product, st.Phase); err != nil {
 			events.Log(cfg.Workspace, st.RunID, "gate_fail", st.Phase, err.Error())
 			fmt.Fprintf(os.Stderr, "dudes: gate: %v\n", err)
@@ -123,6 +126,9 @@ func stepContractTask(cfg config.Config, st *runstate.State, con *contract.Contr
 	}
 	events.Log(cfg.Workspace, st.RunID, "task_leave", st.Phase, tk.ID)
 	if _, more := nextOpenTask(con, st); !more {
+		if code, ended := endSliceStep(cfg, st); ended {
+			return code
+		}
 		if err := gate.CheckLeave(cfg.Workspace, cfg.Product, st.Phase); err != nil {
 			events.Log(cfg.Workspace, st.RunID, "gate_fail", st.Phase, err.Error())
 			fmt.Fprintf(os.Stderr, "dudes: gate: %v\n", err)

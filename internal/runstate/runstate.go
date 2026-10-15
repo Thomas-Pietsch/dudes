@@ -34,6 +34,9 @@ const (
 	StatusWaitingDecision Status = "waiting_decision"
 	StatusSealed          Status = "sealed"
 	StatusFailed          Status = "failed"
+	// StatusEnded: the run's work is over without a seal — every task of an item slice is done and
+	// decided (F88). Nothing steps it on; its branch is the role's to merge.
+	StatusEnded Status = "ended"
 )
 
 // State is durable run progress (not chat history).
@@ -91,7 +94,7 @@ func (st *State) Reopen(taskID, note string) {
 		st.Redo = map[string]string{}
 	}
 	st.TaskID, st.Redo[taskID] = taskID, note
-	if st.Status == StatusWaitingDecision {
+	if st.Status == StatusWaitingDecision || st.Status == StatusEnded { // a slice that ended opens again
 		st.Status = StatusRunning
 	}
 }

@@ -88,6 +88,8 @@ func cmdDoSlice(configPath string, a sliceArgs) int {
 // sliceResult is what a preparation made.
 type sliceResult struct {
 	Name, Item   string
+	Product      string
+	Files        string // where the product's files sit: dudes, or dudes/<product> in a repository of several
 	Branch, Base string
 	BaseSHA      string
 	Worktree     string // relative to the repository's root
@@ -97,7 +99,7 @@ type sliceResult struct {
 }
 
 func (r *sliceResult) print(w io.Writer) {
-	fmt.Fprintf(w, "prepared %s (item %s): %s on %s from %s (%s)\n", r.Name, r.Item, r.Worktree, r.Branch, r.Base, shortSHA(r.BaseSHA))
+	fmt.Fprintf(w, "prepared %s (item %s of %s, from %s/): %s on %s from %s (%s)\n", r.Name, r.Item, r.Product, r.Files, r.Worktree, r.Branch, r.Base, shortSHA(r.BaseSHA))
 	for _, p := range r.Pins {
 		fmt.Fprintf(w, "  spec %s pinned at %s (%s)\n", p.Root, p.Ref, shortSHA(p.Commit))
 	}
@@ -152,25 +154,30 @@ func prepareSlice(configPath, dir string, a sliceArgs) (*sliceResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	repo, err := handoff.ReadRepo(root, plan.BaseSHA)
+	// the item's product and its files: in a repository of several products, the one whose work items
+	// the ID belongs to — refused, with the products it knows, before anything is made
+	repo, err := handoff.ReadRepo(root, plan.BaseSHA, itemArg)
 	if err != nil {
 		return nil, err
 	}
 	cfg := user
-	if repo.Config != nil {
+	for _, f := range repo.Configs { // the shared settings, then the product's own
 		var ignored []string
-		if cfg, ignored, err = user.Overlay(repo.Config); err != nil {
-			return nil, fmt.Errorf("%s/config.json: %w", handoff.Dir, err)
+		if cfg, ignored, err = cfg.Overlay(f.Data); err != nil {
+			return nil, fmt.Errorf("%s: %w", f.Path, err)
 		}
 		for _, k := range ignored {
 			why := "that is the machine's, not the repository's"
-			if k == "seal.require_signature" {
+			switch {
+			case k == "seal.require_signature" && user.Seal.RequireSignature:
 				why = "your own dudes.json asks for signed seals, and a repository cannot waive that"
+			case k == "seal.require_signature":
+				why = handoff.Dir + "/config.json asks for signed seals, and a product cannot waive that"
 			}
-			fmt.Fprintf(os.Stderr, "dudes: warning: %s/config.json sets %s — ignored: %s\n", handoff.Dir, k, why)
+			fmt.Fprintf(os.Stderr, "dudes: warning: %s sets %s — ignored: %s\n", f.Path, k, why)
 		}
 	}
-	product, repoTest := repoProduct(repo), repoTestCommand(repo.Config)
+	product, repoTest := repo.ProductName(), repo.TestCommand()
 	if product == "" {
 		return nil, fmt.Errorf("%s names no product: set \"product\" in %s/specset.json or %s/config.json", handoff.Dir, handoff.Dir, handoff.Dir)
 	}
@@ -267,8 +274,7 @@ func populateSlice(plan *handoff.Plan, repo *handoff.Repo, sl *handoff.Slicing, 
 	if err := freeze.RequireConsistent(ws, cfg.Product); err != nil {
 		return nil, err
 	}
-	msg := withTrailers(fmt.Sprintf("chore(run): start %s [🔹engine]", sl.ID), in.trailers)
-	if err := gitx.EmptyCommit(ws, msg); err != nil {
+	if err := gitx.EmptyCommit(ws, handoff.StartMessage(c, plan.Pins, in.trailers)); err != nil {
 		return nil, err
 	}
 	if code := cmdInit(cfgPath, sl.Name(item)); code != 0 {
@@ -277,30 +283,7 @@ func populateSlice(plan *handoff.Plan, repo *handoff.Repo, sl *handoff.Slicing, 
 	if code := cmdFreeze(cfgPath); code != 0 {
 		return nil, fmt.Errorf("freeze failed")
 	}
-	return &sliceResult{Name: sl.Name(item), Item: item, Tasks: c.Tasks}, nil
-}
-
-// repoProduct is the repository's product: its config's, else its spec-set's — never the user's, whose
-// dudes.json belongs to whatever product that file was written for.
-func repoProduct(repo *handoff.Repo) string {
-	var c struct {
-		Product string `json:"product"`
-	}
-	if repo.Config != nil {
-		_ = json.Unmarshal(repo.Config, &c)
-	}
-	return strings.TrimSpace(nonzero(c.Product, repo.SpecSet.Product))
-}
-
-// repoTestCommand is the test_command dudes/config.json sets, the default of a slicing that names none.
-func repoTestCommand(data []byte) []string {
-	var c struct {
-		TestCommand []string `json:"test_command"`
-	}
-	if data != nil {
-		_ = json.Unmarshal(data, &c)
-	}
-	return c.TestCommand
+	return &sliceResult{Name: sl.Name(item), Item: item, Product: cfg.Product, Files: repo.Where(), Tasks: c.Tasks}, nil
 }
 
 // canonicalItem finds the work item named in any case ("bk-001") and returns its ID as the backlog writes it.

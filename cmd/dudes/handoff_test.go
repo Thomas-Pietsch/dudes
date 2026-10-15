@@ -208,7 +208,8 @@ func TestPrepareSlice(t *testing.T) {
 		t.Errorf("the branch starts at %s, want the base %s", got, base)
 	}
 	head := gitIn(t, wt, "log", "-1", "--format=%B")
-	if !strings.HasPrefix(head, "chore(run): start bl-002a [🔹engine]") || !strings.Contains(head, "\nItem: BL-002\n") {
+	if !strings.HasPrefix(head, "chore(BL-002a): start the run for AC-1 and AC-3 of BL-002 [🔹engine]\n\n") || !strings.Contains(head, "\nItem: BL-002\n") ||
+		!strings.Contains(head, "spec freeze are git notes on this commit. The spec as pinned: spec at "+handoffPin) {
 		t.Errorf("start commit:\n%s", head)
 	}
 	if gitIn(t, wt, "status", "--porcelain") != "" || gitIn(t, f.dev, "status", "--porcelain") != "" || gitIn(t, f.spec, "status", "--porcelain") != "" {
@@ -330,7 +331,7 @@ func TestPrepareSlice(t *testing.T) {
 
 	var out bytes.Buffer
 	res.print(&out)
-	for _, want := range []string{"prepared BL-002a", ".worktrees/bl-002a on feature/bl-002a", "spec pinned at " + handoffPin, "bl-002a-tests (red first)",
+	for _, want := range []string{"prepared BL-002a (item BL-002 of bench, from dudes/)", ".worktrees/bl-002a on feature/bl-002a", "spec pinned at " + handoffPin, "bl-002a-tests (red first)",
 		"next: dudes -config .worktrees/bl-002a/.dudes/dudes.json step\n"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output lacks %q:\n%s", want, out.String())
@@ -430,6 +431,110 @@ func TestPrepareSliceTakesBackWhatItMade(t *testing.T) {
 			t.Errorf("%s: %v, want %q", c.id, err, c.want)
 		}
 		f.nothingMade(t, c.id, before)
+	}
+}
+
+// newProductsFixture is the handoff fixture as a dev repository of two products in one module: the
+// bench (BL-nnn) and a second product, other (OT-nnn), whose spec documents sit in the same spec
+// repository, frozen on a release branch of their own. dudes/ holds a folder per product beside the
+// settings they share; other has settings of its own.
+func newProductsFixture(t *testing.T) *handoffFixture {
+	t.Helper()
+	f := newHandoffFixture(t)
+	write := func(dir, rel, body string) {
+		t.Helper()
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(rel string) string {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join("..", "..", "bench", "workspace", filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	other := strings.NewReplacer("BL-", "OT-", "BENCH", "OTHER")
+	for _, doc := range []string{"PRD", "TA", "QR", "BACKLOG", "ROADMAP"} {
+		write(f.spec, "OTHER_"+doc+".md", other.Replace(read("BENCH_"+doc+".md")))
+	}
+	gitIn(t, f.spec, "add", "-A")
+	gitIn(t, f.spec, "commit", "-qm", "other 1.0")
+	gitIn(t, f.spec, "branch", "release/other-v1.0")
+
+	specset := func(p, prefix string) string {
+		var entries []string
+		for _, doc := range []string{"PRD", "TA", "QR", "BACKLOG", "ROADMAP"} {
+			entries = append(entries, `{"id": "`+doc+`", "kind": "`+strings.ToLower(doc)+`", "root": "spec", "path": "`+prefix+`_`+doc+`.md"}`)
+		}
+		return `{"roots": {"spec": {"repo": "../spec", "pin": "release/` + p + `-v1.0"}}, "entries": [` + strings.Join(entries, ", ") + `]}`
+	}
+	gitIn(t, f.dev, "rm", "-q", "dudes/profile.json", "dudes/specset.json", "dudes/config.json")
+	write(f.dev, "dudes/config.json", `{"ollama": {"model": "m"}, "aider": {"model": "ollama/m"}, "test_command": ["go", "test", "./..."]}`)
+	write(f.dev, "dudes/bench/profile.json", read("dudes/profile.json"))
+	write(f.dev, "dudes/bench/specset.json", specset("bench", "BENCH"))
+	write(f.dev, "dudes/other/profile.json", other.Replace(read("dudes/profile.json")))
+	write(f.dev, "dudes/other/specset.json", specset("other", "OTHER"))
+	write(f.dev, "dudes/other/config.json", `{"test_command": ["go", "test", "./other/..."]}`)
+	write(f.dev, "other/other.go", "package other\n")
+	gitIn(t, f.dev, "add", "-A")
+	gitIn(t, f.dev, "commit", "-qm", "two products")
+	return f
+}
+
+// In a dev repository of several products, the item's ID finds its product: the slice gets that
+// product's profile, spec-set and pins, and its settings over the shared ones. An item no product
+// claims is refused before anything is made, naming the products the repository knows.
+func TestPrepareSliceInARepoOfSeveralProducts(t *testing.T) {
+	f := newProductsFixture(t)
+	before := f.worktrees(t)
+	_, err := prepareSlice(f.cfg, f.dev, sliceArgs{slicing: f.slicing(t, "xx-001a", func(s *handoff.Slicing) { s.Item = "XX-001" })})
+	if err == nil || !strings.Contains(err.Error(), `XX-001 is no product's of this repository — it knows bench (BL-\d{3}), other (OT-\d{3})`) {
+		t.Fatalf("an item no product claims: %v", err)
+	}
+	f.nothingMade(t, "xx-001a", before)
+
+	res, err := prepareSlice(f.cfg, f.dev, sliceArgs{item: "bl-002", slicing: f.slicing(t, "bl-002a", nil)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Product != "bench" || res.Files != "dudes/bench" || len(res.Pins) != 1 || res.Pins[0].Ref != handoffPin || res.Pins[0].Commit != f.release {
+		t.Errorf("bench slice: product %q from %s, pins %+v", res.Product, res.Files, res.Pins)
+	}
+	cfg, _, err := config.Load(filepath.Join(f.worktree("bl-002a"), ".dudes", "dudes.json"))
+	if err != nil || cfg.Product != "bench" || strings.Join(cfg.TestCommand, " ") != "go test ./..." || cfg.Ollama.Model != "m" {
+		t.Errorf("bench run config: %+v %v", cfg, err)
+	}
+
+	// the other product's item: its own release, its own profile, its own test command
+	res, err = prepareSlice(f.cfg, f.dev, sliceArgs{slicing: f.slicing(t, "ot-002a", func(s *handoff.Slicing) {
+		s.Item, s.Scope, s.Tests, s.Hooks = "OT-002", []string{"other/*"}, []string{"other/ot002_test.go"}, nil
+		s.TestCommand, s.GateCommand, s.Constraints = nil, nil, nil
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt := f.worktree("ot-002a")
+	pin := filepath.Join(f.spec, ".worktrees", "spec-ot-002a")
+	if res.Product != "other" || res.Files != "dudes/other" || len(res.Pins) != 1 || res.Pins[0].Ref != "release/other-v1.0" || gitIn(t, pin, "rev-parse", "HEAD") != gitIn(t, f.spec, "rev-parse", "release/other-v1.0") {
+		t.Errorf("other slice: product %q from %s, pins %+v", res.Product, res.Files, res.Pins)
+	}
+	if data, _ := os.ReadFile(filepath.Join(wt, ".dudes", "profile.json")); !strings.Contains(string(data), `OT-\\d{3}`) {
+		t.Errorf("the run's profile is not the other product's:\n%s", data)
+	}
+	con, _, err := contract.Load(wt)
+	if err != nil || con.Item != "OT-002" || con.Product != "other" || strings.Join(con.Tasks[0].Test, " ") != "go test ./other/..." {
+		t.Errorf("other contract: %+v %v", con, err)
+	}
+	var out bytes.Buffer
+	res.print(&out)
+	if !strings.Contains(out.String(), "prepared OT-002a (item OT-002 of other, from dudes/other/)") {
+		t.Errorf("output:\n%s", out.String())
 	}
 }
 

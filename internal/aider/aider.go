@@ -254,12 +254,20 @@ func LookPath(bin string) error {
 	return nil
 }
 
+// StubImplRel is the file WriteStubImpl writes, relative to the workspace: cmd/<product>/main.go.
+func StubImplRel(product string) string {
+	if product == "" {
+		product = "product"
+	}
+	return "cmd/" + product + "/main.go"
+}
+
 // WriteStubImpl drops a minimal placeholder when Aider is unavailable (-stub).
 func WriteStubImpl(workspaceRoot, product string) (rel string, err error) {
 	if product == "" {
 		product = "product"
 	}
-	rel = filepath.ToSlash(filepath.Join("cmd", product, "main.go"))
+	rel = StubImplRel(product)
 	dir, err := wsbound.Resolve(workspaceRoot, filepath.Join("cmd", product))
 	if err != nil {
 		return "", err

@@ -7,14 +7,16 @@ import (
 	"strings"
 
 	"github.com/Thomas-Pietsch/dudes/internal/config"
+	"github.com/Thomas-Pietsch/dudes/internal/contract"
 	"github.com/Thomas-Pietsch/dudes/internal/events"
 	"github.com/Thomas-Pietsch/dudes/internal/gitx"
+	"github.com/Thomas-Pietsch/dudes/internal/handoff"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
 	"github.com/Thomas-Pietsch/dudes/internal/testrun"
 )
 
 // revertTrailer names, in the guard's revert commit, the last commit of the pass it undid.
-const revertTrailer = "Dudes-Reverted:"
+const revertTrailer = handoff.RevertedTrailer + ":"
 
 // guardRegression undoes the worker's pass — the commits after pre — when its gate failed and it
 // broke what was green before: an acceptance test an earlier gate recorded passing that now fails
@@ -61,6 +63,9 @@ func guardRegression(cfg config.Config, st *runstate.State, pre string) {
 	}
 	msg := fmt.Sprintf("chore(phase): revert a pass that broke %s, green before [🔹engine]\n\n%s %s\n",
 		strings.Join(broken, ", "), revertTrailer, head)
+	if subject, trailers, ok := revertNames(cfg, st, pre, broken); ok { // the item's terms (F88)
+		msg = fmt.Sprintf("%s\n\n%s\n%s %s\n", subject, trailers, revertTrailer, head)
+	}
 	if err := gitx.RevertSince(cfg.Workspace, pre, msg); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: guard: %v — the pass stays\n", err)
 		return
@@ -68,6 +73,29 @@ func guardRegression(cfg config.Config, st *runstate.State, pre string) {
 	events.Log(cfg.Workspace, st.RunID, "revert", st.Phase, strings.Join(broken, " "))
 	fmt.Printf("guard: the pass broke %s, green before — reverted; the next step starts from the last green state, with this gate's output\n",
 		strings.Join(broken, ", "))
+}
+
+// revertNames names the guard's revert of the passes after pre in the task's terms, with the item's
+// and the task's trailers; ok is false outside a task of an item-bound contract.
+func revertNames(cfg config.Config, st *runstate.State, pre string, broken []string) (subject, trailers string, ok bool) {
+	con, found, _ := contract.Load(cfg.Workspace)
+	names, named := handoff.NamesFor(con, st.TaskID)
+	if !found || !named {
+		return "", "", false
+	}
+	log, err := gitx.FirstParents(cfg.Workspace, taskLog)
+	if err != nil {
+		return "", "", false
+	}
+	undone := 0
+	for _, e := range log {
+		if e.SHA == pre {
+			break
+		}
+		undone++
+	}
+	passes := handoff.TaskCommits(log, st.TaskID).Passes
+	return names.Revert(passes-undone+1, passes, broken), names.Trailers("Item: "+con.Item, 0), true
 }
 
 // revertedPass is the pass HEAD undid (the guard's revert commit) and why: its last commit and the

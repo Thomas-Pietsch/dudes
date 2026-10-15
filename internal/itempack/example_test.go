@@ -113,6 +113,26 @@ func TestSampleContractRefsAreTheItemsOwn(t *testing.T) {
 	}
 }
 
+// In a dev repository of several products, a work item finds its product by its ID family: the
+// profile's owner that gives the backlog its IDs (F88). Every item of the sample is the sample's; a
+// criterion, a TA ID or another product's item is not.
+func TestSampleProfileOwnsItsItems(t *testing.T) {
+	s, _ := sampleSet(t)
+	for _, it := range s.Items() {
+		if !s.Profile.OwnsItem(it.ID) || !s.Profile.OwnsItem(strings.ToLower(it.ID)) {
+			t.Errorf("%s is not the sample's", it.ID)
+		}
+	}
+	for _, id := range []string{"AC-SHELF-01", "API-01", "BL-002", "BK-1", "BK-0012"} {
+		if s.Profile.OwnsItem(id) {
+			t.Errorf("%s counts as a work item of the sample", id)
+		}
+	}
+	if got := s.Profile.ItemFamily(); got != `BK-\d{3}` {
+		t.Errorf("item family %q", got)
+	}
+}
+
 func readJSON(t *testing.T, path string, v any) {
 	t.Helper()
 	data, err := os.ReadFile(path)

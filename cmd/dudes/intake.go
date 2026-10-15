@@ -112,7 +112,7 @@ func bindItem(cfg config.Config, configPath string, s *itempack.Set, id, text st
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 		return 1
 	}
-	if running && st.Status != runstate.StatusSealed && st.Status != runstate.StatusFailed {
+	if running && st.Status != runstate.StatusSealed && st.Status != runstate.StatusFailed && st.Status != runstate.StatusEnded {
 		con, _, _ := contract.Load(cfg.Workspace)
 		if con != nil && con.Item == id {
 			fmt.Printf("intake: %s is bound, run %s at %s — next: dudes step\n", id, st.RunID, st.Phase)

@@ -184,4 +184,10 @@ func TestReopen(t *testing.T) {
 	if _, ok := st.Redo["test-add"]; ok || st.Redo["impl-add"] != "print the line" {
 		t.Fatalf("redo notes after completion: %+v", st.Redo)
 	}
+	// a slice that ended (F88) opens again when the role sends a task back
+	st.Status = runstate.StatusEnded
+	st.Reopen("test-add", "once more")
+	if st.Status != runstate.StatusRunning {
+		t.Fatalf("an ended run stays ended after a redo: %+v", st)
+	}
 }

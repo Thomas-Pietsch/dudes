@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/Thomas-Pietsch/dudes/internal/workspace"
 )
@@ -126,6 +127,31 @@ func ParseProfile(data []byte) (*Profile, error) {
 		p.Backlog.ACLine = defaultACLine
 	}
 	return &p, nil
+}
+
+// OwnsItem reports whether id belongs to this profile's work items: the first owner whose pattern
+// matches all of id, in any case, gives the IDs of the backlog. In a repository of several products
+// that is how an item finds its product (F88).
+func (p *Profile) OwnsItem(id string) bool {
+	for _, o := range p.Owners {
+		re, err := regexp.Compile(`(?i)^(?:` + o.Pattern + `)$`)
+		if err == nil && re.MatchString(id) {
+			return o.Doc == p.Backlog.Doc
+		}
+	}
+	return false
+}
+
+// ItemFamily is the pattern of the owners that give the backlog its IDs, the work items' family
+// ("BK-\d{3}"); "" when the profile names none.
+func (p *Profile) ItemFamily() string {
+	var pats []string
+	for _, o := range p.Owners {
+		if o.Doc == p.Backlog.Doc {
+			pats = append(pats, o.Pattern)
+		}
+	}
+	return strings.Join(pats, "|")
 }
 
 // LoadProfile reads .dudes/profile.json. ok=false when the instance has none.
