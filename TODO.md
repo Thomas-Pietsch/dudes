@@ -28,14 +28,10 @@
   2. A new repository under the same name (the human's choice, 2026-10-15): the old one is renamed `dudes-private` and stays private, the full record. In place was dropped: a force-pushed history stays in GitHub's storage, a public repository opens a commit by a 4-character SHA prefix, and GitHub Support purges only secrets. The owner renames the old repository and creates the empty new one; DevOps pushes the fresh root as `development`, and `C:\Coding` switches to it.
   3. The owner makes it public and turns on private vulnerability reporting (SECURITY.md links to it).
   The docs name engine versions by date; only third-party citations keep their commit SHAs.
-- [ ] E1 · `[engine]` **Dev stage: item handoff (F88), then three items through it** — the first real item (a backup verification in one Go package) ran by hand on 2026-10-14 (`TREND.md` §1.1: 20 hand steps and 418k cloud tokens to prepare).
-  1. F88 makes those steps the engine's:
-     - `dudes do <item>` with the role's slicing, from the repo's tracked `dudes/`;
-     - tests where the language needs them, and commit subjects that name the task;
-     - the review packet in `status` and the local tokens in the events;
-     - a redo labelled by who decided, and the formatter from the repo.
-  2. `rules/DUDES.md` §1 *Subagents*: in a repo with `dudes/`, the red-test writer and the implementer are the engine's local worker. The role reviews (`dudes decide` / `redo`, sending back spec defects and breaks of a documented standard) and merges.
-  3. Items 2–4 go through it: the factory-quality product's second item onward. The CEO allowed it on 2026-10-14 against its frozen spec, its documents untouched. The remaining slices of the first real item count as one item.
+- [ ] E1 · `[engine]` **Dev stage: three real items through the bridge** — F88 and its make goals (`make/bridge.mk`: slice, review, approve, redo, land) shipped on 2026-10-16; the first real item (a backup verification in one Go package) had needed 20 hand steps and 418k cloud tokens (`TREND.md` §1.1).
+  1. The instance's dev repo tracks its `dudes/` folder (one folder per product) and includes `make/bridge.mk`.
+  2. Items 2–4 go through `make slice`, reviewed by the role-play Developer with `make approve` / `make redo`, never by DevOps: the factory-quality product's second item onward. The CEO allowed it on 2026-10-14 against its frozen spec, its documents untouched. The remaining slices of the first real item count as one item.
+  3. Each item's ledger (`dudes events`, `refs/notes/dudes/ledger`) is the evidence for the exit check. Known gaps: the bench counts only the last token line per step, and `dudes test -fix` and `dudes do -pick` record no worker event.
 
   Model comparisons stay paused.
 
