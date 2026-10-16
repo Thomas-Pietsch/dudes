@@ -80,7 +80,7 @@ Cline asks before it acts. The flow edits files and runs `git` and `make` all th
 | `Report: ON` | A toggle, for this session. The default is the `Toggles:` line in `AGENTS.md` |
 | `Seal it` · `Skip demo` · `Not good enough: …` | Your answers at the human gate |
 
-Start a new task per piece of work: the state is in the files and in git, not in the conversation. Commit rules enforced by git instead of by the agent: `git config core.hooksPath .dudes-framework/hooks`. The first run, end to end: [the 10-minute walkthrough](WALKTHROUGH.md).
+Start a new task per piece of work: the state is in the files and in git, not in the conversation. Commit rules enforced by git instead of by the agent: `git config core.hooksPath .dudes-framework/hooks`. The first run, end to end: [the 10-minute walkthrough](WALKTHROUGH.md). To run it in Cline and report what differs: [the IDE run sheet](IDE_RUN_SHEET.md).
 
 ## Other layouts
 

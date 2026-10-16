@@ -15,7 +15,7 @@ Three files that make your product repo a DUDES role-play repo: an IDE agent (Cl
 3. Set `TEST` in the `Makefile` to the command that runs all your tests. In a new repo you can leave it: QA (Author) sets it for the stack the TA names.
 4. Open the repo in your agent and ask `As PM & Software Architect: which files do you read before you write a spec?` The answer starts with `## 🔷 PM & Software Architect`, then the `Active rules: … · Toggles: …` line.
 
-The guides give each host's checks and fixes: [Claude Code](../../docs/CLAUDE_CODE_SETUP.md) (it adds a `.claude/settings.json`), [Cursor](../../docs/CURSOR_SETUP.md), [Cline](../../docs/CLINE_SETUP.md). The first run, on a sample product: [the 10-minute walkthrough](../../docs/WALKTHROUGH.md).
+The guides give each host's checks and fixes: [Claude Code](../../docs/CLAUDE_CODE_SETUP.md) (it adds a `.claude/settings.json`), [Cursor](../../docs/CURSOR_SETUP.md), [Cline](../../docs/CLINE_SETUP.md). The first run, on a sample product: [the 10-minute walkthrough](../../docs/WALKTHROUGH.md). Running the starter in Cursor or Cline: [the IDE run sheet](../../docs/IDE_RUN_SHEET.md).
 
 ## The one path
 

@@ -12,8 +12,7 @@
 
 ## Now
 
-- [ ] R · `[trial]` **The IDE door in Cursor and Cline** — the starter (`templates/product`, F90) has run in Claude Code only. DevOps writes the run sheet now: from `docs/WALKTHROUGH.md` and the two setup guides, the steps and what to note at each (the rules and hooks load, the tag check refuses an untagged commit, a role hands over). The runs themselves are blocked: the human's time. Each finding becomes an `R` line.
-- [ ] P · `[engine]` **A workspace inside another repository** — `dudes` run in a folder that is not its repository's top level works on the repository around it: its commits and notes land there. `make try` fences the tour with `GIT_CEILING_DIRECTORIES`; the engine itself should refuse, or say plainly where it writes.
+- [ ] R · `[trial]` **The IDE door in Cursor and Cline** — blocked: the human's time. The starter (`templates/product`, F90) has run in Claude Code only; the run sheet is `docs/IDE_RUN_SHEET.md` (2026-10-16). Each finding becomes an `R` line.
 
 ## Next
 
