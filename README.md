@@ -113,7 +113,11 @@ The commands you will meet:
 | `dudes doctor` | Probes git, Ollama, Aider, the packer and the config |
 | `dudes events` | The run's event log, with the local tokens and time of each worker call a step makes, and who answered each pause; those are kept in git too, so they outlive a slice's worktree |
 | `dudes do <item> -slice <file>` | Prepares one slice, a part of a work item, for the local workers: worktree, branch, pinned spec, a task for the failing tests and a task for the code. Each task you approve with `dudes decide` lands as one commit, so the branch merges as it is |
+| `dudes redo <task> -by <role> "<why>"` | Sends a waiting task back to its worker with your feedback |
+| `dudes land <slice> -by <role>` | Merges an ended slice and removes its worktree, branch and spec pins |
 | `dudes help` | The rest; [`FEATURES.md`](FEATURES.md) lists every capability |
+
+A product repo that includes [`make/bridge.mk`](make/bridge.mk) gets the same loop as make goals: `make slice`, `review`, `approve`, `redo` and `land`.
 
 ## What is real today, and what is vision
 
@@ -230,7 +234,7 @@ The three links at the top are enough to start. For the rest:
 |------|------------|
 | [`MISSION.md`](MISSION.md) | Why: the north star |
 | [`FEATURES.md`](FEATURES.md) | What the binary claims, by feature ID (F1, F82, …), each with a status: shipped, building, planned |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | How the Go engine is built, milestones M0 to M13 |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | How the Go engine is built, milestones M0 to M14 |
 | [`ROADMAP.md`](ROADMAP.md) | The path: the stages (lanes) in which the engine takes over the flow from the IDE agents, each with an exit check (`make roadmap-check`) |
 | [`TODO.md`](TODO.md) | The work list: Now, Next, Later (`make now`) |
 | [`docs/BRAND.md`](docs/BRAND.md) | The identity: the seal, colors, voice |

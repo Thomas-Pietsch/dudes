@@ -598,6 +598,7 @@ Each file has one job. This is the only place that defines them; other files poi
 | `skills/framework/` | how DevOps edits | no |
 | `Makefile` (framework root) | the framework's own DevOps goals (`setup`, `build`, `test`, `ci`, `doctor`, `bench`, the worker image) — built for working *on* DUDES. Not an instance makefile: the goal interface (§13) binds the instance repos, whose makefiles the instance designs | no |
 | `AGENTS.md`, `rules/*` | IDE entry, not the runtime. Two worlds: the workspace `AGENTS.md` is the framework DevOps entry; each instance repo's `AGENTS.md` plus `rules/*` carries the role-play | no |
+| `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/`, `.github/` | THE PUBLIC FACE — what an outsider reads, reports and contributes through. Points to the files above; holds no design, work or verdicts. `make public-check` guards it | no |
 
 This separation keeps `CORE.md` from becoming an implementation dump, keeps temporary technology or statute citations from becoming doctrine, and keeps work out of the knowledge files.
 

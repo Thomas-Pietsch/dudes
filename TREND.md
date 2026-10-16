@@ -504,7 +504,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** state machine + context reset + Git-synchronized transitions (= theoretical CrewAI lifecycle, mechanical not chatty).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -516,7 +516,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** activity = one phase worker invoke; workflow = sequential DUDES lifecycle; signal = human seal/reject; continue-as-new / compact history for long cycles.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -529,7 +529,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** phase/role decomposition into tiny prompts (lifecycle coverage). **Do not** reuse chat handoffs or debate orchestration.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### bernstein 🎼
 
@@ -556,7 +556,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable ideas:** sources for §6 **Framework-Owned Execution**, **Convergence Passes**, **Context Reset**, **Worktree-Isolated Worker**; anti-pattern **User-Definable Lifecycle Graph**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### ralphex 🔁
 
@@ -566,7 +566,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable ideas:** → §6 **Cross-Model Review** (new, hold); sources for **Context Reset**, **Framework-Owned Execution** (validation commands per plan), **Orchestrator-Owned Commits** (commit per task and fix).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### MartinLoop 🧮
 
@@ -631,7 +631,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** repo-map compression, atomic Git worker, mature code editing.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -659,7 +659,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Recipe-Scoped Worker Invoke**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -671,7 +671,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Bounded Worker Invoke Contract**, **Orchestrator-Owned Commits**, **Context Reset** (fresh session), **In-Phase History Compaction**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -683,7 +683,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Minimal Tool Belt per Phase**, **Event-Sourced Worker Replay** (JSONL tree), **Skill = Portable Discipline Unit**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### lean-coder 🪶
 
@@ -720,7 +720,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable ideas:** → §6 **Git Notes as Side Record** (new, hold); source for **Worktree-Isolated Worker** (temporary branch per turn).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -734,7 +734,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Delta Specs**, **Requirement/Scenario as Mechanical Gate**, **Change-Scoped Folder + Archive**, **Machine-Readable CLI Surface**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -746,7 +746,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Cross-Artifact Consistency Check**, **Converge-to-Tasks Loop**, **Machine-Readable CLI Surface**; plus the anti-pattern **User-Definable Lifecycle Graph**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -758,7 +758,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Worktree-Isolated Worker** (cheap precursor to the Ephemeral Execution Sandbox); lane + retrospective notes recorded there.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -770,7 +770,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Scoped Standards Injection**; bugfix shape → **Converge-to-Tasks Loop** source; parallel task waves stay out (sequential machine, `CORE.md` §4).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -784,7 +784,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Repository Map / Phase-Scoped Pack**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -796,7 +796,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Schema-Validated Control Output** (same family as PydanticAI; Go ports preferred).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -808,7 +808,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Schema-Validated Control Output** (shared with Instructor / Outlines).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### Orbit 🪐
 
@@ -839,7 +839,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** OpenAI-compatible local serving below DUDES.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -855,7 +855,7 @@ Prompt-delivered process. These install into a host agent (Claude Code, Codex, C
 
 **Reusable idea:** → §6 anti-pattern **Process-as-Prompt**; **Skill = Portable Discipline Unit**; story-per-session → **Context Reset** source.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -867,7 +867,7 @@ Prompt-delivered process. These install into a host agent (Claude Code, Codex, C
 
 **Reusable idea:** → **Context Reset** source (fresh-context subagent per task); `STATE.md` ≈ `.dudes/state.json` + `SESSION_STATE.md`.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -879,7 +879,7 @@ Prompt-delivered process. These install into a host agent (Claude Code, Codex, C
 
 **Reusable idea:** → §6 **Two-Axis Review Gate**; **Skill = Portable Discipline Unit** (with evals); **Worktree-Isolated Worker** source.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -891,7 +891,7 @@ Prompt-delivered process. These install into a host agent (Claude Code, Codex, C
 
 **Reusable idea:** → §6 **Scoped Standards Injection**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ---
 
@@ -929,7 +929,7 @@ A desk sits *above* harnesses: it holds sessions or tasks, routes them to agents
 
 **Reusable ideas:** → §6 **Worktree-Isolated Worker** (setup goal), **Two-Axis Review Gate** (severity, focused re-verify), **Read-only Desk over the Record** (new, hold); anti-pattern sources **Agent↔Agent Channel Bus**, **User-Definable Lifecycle Graph**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### MonoCode 🗂️
 
@@ -939,7 +939,7 @@ A desk sits *above* harnesses: it holds sessions or tasks, routes them to agents
 
 **Reusable ideas:** → §6 **Read-only Desk over the Record** (source); anti-pattern source **Agent↔Agent Channel Bus**.
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### paperclip 📎
 
@@ -949,7 +949,7 @@ A desk sits *above* harnesses: it holds sessions or tasks, routes them to agents
 
 **Reusable ideas:** → §6 **Heartbeat → Bounded Run** (new, hold), **Run Budget Hard-Stop** (source); **Read-only Desk over the Record** (source, inverse); anti-pattern **Session as Record** (new).
 
-*Legacy entry — no evidence record. The full essay is in Git (`git show c27320d:TREND.md`); reassess with `skills/framework/assess` before relying on it.*
+*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
 
 ### Ivy Tendril 🌿
 
