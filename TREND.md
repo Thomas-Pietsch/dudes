@@ -173,6 +173,18 @@ Rounds 1–4 (all tests in one file) failed every model — mostly on defects of
 
 It landed on the instance's `development` branch, plus a gofmt commit by DevOps; the formatter was configured only after the test task ran. Its CI run was not observed here. It does not count for the exit check: DevOps prepared the run (418k tokens on Opus) and landed it by hand. Those hand steps are the bridge's input (`TODO.md`).
 
+**Harness trial on replay slice 1, 2026-10-16 (Pi against Aider, §4 paired trial).** The human's go after the worlds split (`ROADMAP.md`). A level that holds only slice 1 of the replay (its reference check green, base red), `gemma4:26b` through a derived tag with a 64k context and `num_predict` 12288 set on the server, temperature 0, thinking off, `STEPS=3`, engine `ece4e5c`, the gate in the instance's ci image. Pi 1.3.0 ran in its own worker image (the ci image plus Pi, no Docker socket, offline, tools `read`, `edit`, `write`, `grep`, `find`, `ls`, no bash, compaction off), with the same handover as Aider. Stop rules set before the runs: Pi stops after two failed runs, on a run with no tool call, or at once on a path out of scope.
+
+| Arm | Runs | Pass | Where it stopped | Minutes |
+|---|---|---|---|---|
+| Aider 0.86.2 (control) | 3 | 1/3 (`ac` 2/2) | runs 1 and 3: AC-8 and AC-10 red after 3 steps | 7–10 |
+| Pi 1.3.0 | 1 (stopped) | 0/1 | step 3 edited the read-only tests (`out of scope, discarded`) | 27 |
+
+- **Pi's run degenerated, it did not reason.** Step 1: 147 tool calls, 134 of them `write` on the same `main.go`, ending at the token limit. Step 3: 120 `edit` calls, 117 failing on the read-only `tests/ph001ac10_test.go`, then the limit again. No thinking blocks reached the events, so thinking was off. The model cannot drive a long tool loop: more tool freedom gave it more room to repeat.
+- **Aider's control passed once, where the same model failed slice 1 in 9 of 9 earlier runs.** The level differs (only slice 1; its task text lost the sentence naming the slice's command) and the context now comes from the server. One pass in three does not attribute the change to either.
+
+**Reading:** the harness is not the lever for slice 1 with this model; the trial's rule says so (Pi 0/3 or stopped). Aider stays the code worker until a successor is needed for its advisories; `E1` waits for a new model. A one-shot edit reply bounds a weak model better than an agent loop does. **Next check:** a new model that fits the box, on the slice-1 level first (3 runs, both harnesses only if it drives tools without repeating).
+
 ### 1.2 IDE hosts — judged (`skills/framework/models`)
 
 Which hosted model for which kind of work in the IDE hosts the humans and the role-play use today (Cursor, Claude Code). Judged from vendor sources and this workspace's own sessions, not measured; every hosted model receives the code and the specs (Pillar 2). Checked 2026-10-09.
@@ -683,7 +695,7 @@ Tools are grouped by **what they are**, not by our verdict — the category tell
 
 **Reusable idea:** → §6 **Minimal Tool Belt per Phase**, **Event-Sourced Worker Replay** (JSONL tree), **Skill = Portable Discipline Unit**.
 
-*Legacy entry — no evidence record. The full essay stayed in the private archive; reassess with `skills/framework/assess` before relying on it.*
+**Evidence / review:** assessed 2026-10-16 for the harness trial: the package moved to `@earendil-works/pi-coding-agent` (the `@mariozechner` scope is deprecated at 0.73.1), MIT, very active (8 releases in 15 days, breaking changes in minor versions: pin exactly), Node 22.19 or newer, no built-in Ollama provider (a `models.json` with the `/v1` endpoint), `--mode json` exits 0 on an error reply (read the events, not the exit code), network calls off only with `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK` and `PI_TELEMETRY=0`. Measured: §1.1, harness trial 2026-10-16 — with `gemma4:26b` it looped and edited read-only tests. **Review:** current (checked 2026-10-16). **Decision:** stays a conditional worker; not adopted. **Revisit:** a model that drives a tool loop without repeating, or Aider's retirement.
 
 ### lean-coder 🪶
 
@@ -1492,7 +1504,7 @@ DUDES is the local-model ADE for the company product lifecycle. Sources for this
 | **Now** | Size context and output for a bounded task; verify actual allocation, peak memory and latency. No universal 32k/64k floor is established. | Local Model Gateway (F26); M1–M2. Pillar 1, local self-containment |
 | **Now** | Keep Aider as incumbent and keep commits with the engine. Its pinned image is a toolchain, not the whole-ADE sandbox. Risk: no release after 0.86.2 (PyPI 2026-02-12), its main idle since 2026-05-22, open advisories without a fixed version (`make vuln-scan`, checked 2026-10-12) — an unmaintained incumbent is a revisit trigger for the Next row. | Aider; D2, `CORE.md` §10. Pillars 1–3, engine-owned gates |
 | **Now** | Evaluate a prompt/model change with the §4 paired trial; preserve failures and acceptance evidence. Do not use the stub benchmark for ranking. | Repository test goals; D1. Pillars 1 and 3, frozen oracle and human outcome control |
-| **Next** | On a reproducible incumbent limitation or a sourced material improvement, reassess one alternative and compare the same tasks. Pi already has an adapter; no requirement that every incumbent must fail first. | Pi (F55/F56) or one assessed candidate. Pillar 1, fresh phase context and unchanged lifecycle |
+| **Next** | Done 2026-10-16 for replay slice 1: Pi 1.3.0 against Aider with `gemma4:26b` (§1.1) — Pi looped and edited read-only tests, Aider passed 1 of 3. The harness is not the lever with this model. Reassess an alternative again only with a model that drives a tool loop without repeating, or when Aider must be retired for its advisories. | Pi (F55/F56) or one assessed candidate. Pillar 1, fresh phase context and unchanged lifecycle |
 | **Later** | Assess other harnesses or a verifier when evidence identifies a benefit. Separate worktree change isolation, worker toolchain images and whole-ADE host isolation. | §5 candidates and Ephemeral Execution Sandbox. Pillars 1–3, `CORE.md` §10 |
 | **Never** | A worker owning DUDES transitions, hidden cross-phase conversation as authority, silently mandatory cloud, bypassable spec/test gates, or agent self-seal. Tool names are not permanent blacklists. | §6 anti-patterns. All pillars and Mission invariants |
 
