@@ -273,3 +273,109 @@ func TestCommitMsgRolePaths(t *testing.T) {
 		})
 	}
 }
+
+// TestCommitMsgSpecGate: a PM commit that stages a spec document runs `dudes item check` where a
+// dudes is on PATH and the repo has the profile; any finding refuses it. Everything else passes
+// without running the check.
+func TestCommitMsgSpecGate(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not on PATH")
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", "hooks", "commit-msg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const pm = "docs(x): a requirement [🔹PM & Software Architect]"
+	cases := []struct {
+		name    string
+		fake    string // "" = no dudes on PATH; else the fake's output line, then its exit code after a space
+		profile bool
+		files   []string
+		msg     string
+		ok      bool
+		ran     bool // the check was called
+	}{
+		{"findings refuse a PM spec commit", "consistency: 3 finding(s) 1", true, []string{"spec/X_PRD.md"}, pm, false, true},
+		{"no findings accept it", "consistency: 0 finding(s) 0", true, []string{"spec/X_PRD.md"}, pm, true, true},
+		{"no dudes on PATH accepts it", "", true, []string{"spec/X_PRD.md"}, pm, true, false},
+		{"no profile accepts it", "consistency: 3 finding(s) 1", false, []string{"spec/X_PRD.md"}, pm, true, false},
+		{"a check that could not run accepts it", "dudes: no config 2", true, []string{"spec/X_PRD.md"}, pm, true, true},
+		{"not PM: not run", "consistency: 3 finding(s) 1", true, []string{"spec/X_PRD.md"}, "docs(x): a note [🔹Developer]", true, false},
+		{"PM, no spec document: not run", "consistency: 3 finding(s) 1", true, []string{"pkg/a.go"}, pm, true, false},
+		{"PM, a QR only: not run", "consistency: 3 finding(s) 1", true, []string{"spec/X_QR.md"}, pm, true, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ws := t.TempDir()
+			git := func(args ...string) {
+				t.Helper()
+				if out, err := exec.Command("git", append([]string{"-C", ws}, args...)...).CombinedOutput(); err != nil {
+					t.Fatalf("git %v: %v\n%s", args, err, out)
+				}
+			}
+			write := func(rel, body string) {
+				t.Helper()
+				p := filepath.Join(ws, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			git("init", "-q")
+			git("config", "user.email", "dudes@test")
+			git("config", "user.name", "dudes-test")
+			git("config", "core.hooksPath", filepath.Join(ws, "no-hooks"))
+			git("checkout", "-q", "-b", "development")
+			write("README.md", "base\n")
+			git("add", "README.md")
+			git("commit", "-q", "-m", "base")
+			if c.profile {
+				write(".dudes/profile.json", "{}\n")
+			}
+			for _, f := range c.files {
+				write(f, "change\n")
+				git("add", f)
+			}
+			// PATH without any real dudes, then the fake in front of it
+			var keep []string
+			for _, d := range filepath.SplitList(os.Getenv("PATH")) {
+				if _, e := os.Stat(filepath.Join(d, "dudes")); e == nil {
+					continue
+				}
+				if _, e := os.Stat(filepath.Join(d, "dudes.exe")); e == nil {
+					continue
+				}
+				keep = append(keep, d)
+			}
+			called := filepath.Join(t.TempDir(), "called")
+			if c.fake != "" {
+				i := strings.LastIndex(c.fake, " ")
+				bin := t.TempDir()
+				script := "#!/bin/sh\necho called > '" + filepath.ToSlash(called) + "'\necho '" + c.fake[:i] + "'\nexit " + c.fake[i+1:] + "\n"
+				if err := os.WriteFile(filepath.Join(bin, "dudes"), []byte(script), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				keep = append([]string{bin}, keep...)
+			}
+			msg := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+			if err := os.WriteFile(msg, []byte(c.msg+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("sh", hook, msg)
+			cmd.Dir = ws
+			cmd.Env = append(os.Environ(), "PATH="+strings.Join(keep, string(os.PathListSeparator)))
+			out, err := cmd.CombinedOutput()
+			if (err == nil) != c.ok {
+				t.Fatalf("accepted=%v, want %v\n%s", err == nil, c.ok, out)
+			}
+			if _, e := os.Stat(called); (e == nil) != c.ran {
+				t.Fatalf("check ran=%v, want %v\n%s", e == nil, c.ran, out)
+			}
+			if !c.ok && !(strings.Contains(string(out), "3 open consistency finding") && strings.Contains(string(out), "dudes item check")) {
+				t.Fatalf("the refusal does not name the count and the command\n%s", out)
+			}
+		})
+	}
+}

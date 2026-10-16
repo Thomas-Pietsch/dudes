@@ -1,6 +1,6 @@
 #!/bin/sh
 # DUDES Framework — commit-msg hook
-# Enforces: role tag (§13), work-item trailer while an item is bound (F77), branch-role matrix (§12)
+# Enforces: role tag (§13), work-item trailer while an item is bound (F77), role paths (§14), consistency gate on a PM spec commit (§6), branch-role matrix (§12)
 # Install: make hooks (core.hooksPath)
 
 # Match bytes, not characters: under git the hook runs with LC_CTYPE=C.UTF-8, where MSYS sed
@@ -91,6 +91,31 @@ EOF2
   fi
   set +f
 fi
+
+# ── 1d. Consistency gate on the spec (§6) ───────────────────────────
+# A PM commit that stages a spec document (Markdown, not a QR) runs `dudes item check` when a `dudes`
+# is on PATH and the repo has the profile the check reads (.dudes/profile.json). Zero findings is the
+# bar: any finding refuses the commit. Without `dudes` (the role-play world) or without the profile
+# nothing runs and the commit passes; the rule in rules/DUDES.md holds by discipline. The check reads
+# the work tree, so unstaged edits count. A merge in progress is not judged.
+case "$ROLE" in
+  *PM*)
+    TOP=$(git rev-parse --show-toplevel)
+    if [ -f "$TOP/.dudes/profile.json" ] && command -v dudes >/dev/null 2>&1 \
+       && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 \
+       && git -c core.quotepath=off diff --cached --no-renames --name-only | grep '\.md$' | grep -qv '_QR\.md$'; then
+      FOUND=$( (cd "$TOP" && dudes item check 2>/dev/null) | sed -n 's/^consistency: \([0-9][0-9]*\) finding.*/\1/p' | tail -1)
+      if [ -n "$FOUND" ] && [ "$FOUND" -gt 0 ]; then
+        echo ""
+        echo "❌ DUDES §6: the spec has $FOUND open consistency finding(s); the PM commits spec documents with none."
+        echo "   See them:  dudes item check"
+        echo "   Fix: resolve them, or commit under another role if this is not a spec change."
+        echo ""
+        exit 1
+      fi
+    fi
+    ;;
+esac
 
 # ── 2. Branch-role matrix (§12) ─────────────────────────────────────
 case "$BRANCH" in

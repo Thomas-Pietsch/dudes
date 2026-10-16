@@ -234,6 +234,8 @@ The full product cycle spans multiple repos in a fixed sequence. Each cycle can 
 
 **Traceability is git alone — no reference file.** Dev→Spec: the release branch is the frozen spec; its fork point is the freeze, and only QA commits there (`hooks/commit-msg`), so nothing but the QR changes after it. Spec changes during a cycle go to `development` and reach the next line. Spec→Dev: `*_QR.md` on the release branch names the verified dev commit = evidence of delivery; each cycle adds a QR commit, so git history shows quality progression. Seal: the same tag name in spec and dev repos. Release is sealed **only by the human**.
 
+**The consistency sweep before the freeze.** Before the freeze commit the PM runs the consistency sweep over the spec-set: every ID that is referenced resolves to its owner document, every ID has one definition, and the backlog, the milestones and the QR rows agree (by reading and searching the IDs; `dudes item check` where the engine is installed). The PM freezes only with zero open findings. Where `dudes` is on PATH and the repo has the engine's profile (`.dudes/profile.json`), `hooks/commit-msg` runs the check on a PM commit that changes spec documents and refuses it with findings; elsewhere nothing enforces it, and the rule holds by discipline.
+
 ### One Repository
 
 One repository can hold spec and code, the spec level and the dev level of §4 together (the lead level has no role: the human decides). The cycle above is the same; what differs is where its steps sit:
