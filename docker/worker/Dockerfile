@@ -2,7 +2,7 @@
 # The code worker's toolchain, pinned (CORE §10): Aider and git, nothing else. The engine stays on
 # the host and starts one container per worker process through scripts/worker.sh, which holds the
 # version and tag — build with `make worker-image`.
-FROM python:3.11-slim-bookworm
+FROM python:3.14-slim-bookworm
 ARG AIDER_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends git \
 	&& rm -rf /var/lib/apt/lists/*
