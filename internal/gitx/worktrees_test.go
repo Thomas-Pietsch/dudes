@@ -139,3 +139,31 @@ func TestExclude(t *testing.T) {
 		t.Errorf("an ignored folder was excluded again: %q", data)
 	}
 }
+
+// CheckTopLevel passes a repository's own top level and a folder outside any repository, and refuses
+// a folder inside a repository — naming both, since the commits would land in the outer one.
+func TestCheckTopLevel(t *testing.T) {
+	dir, _ := repoWithCommit(t)
+	sub := filepath.Join(dir, "dudes")
+	if err := gitx.CheckTopLevel(dir); err != nil {
+		t.Errorf("the top level was refused: %v", err)
+	}
+	err := gitx.CheckTopLevel(sub)
+	if err == nil || !strings.Contains(err.Error(), sub) || !strings.Contains(err.Error(), "commits and notes would land in") {
+		t.Fatalf("a folder inside the repository = %v", err)
+	}
+	if err := gitx.CheckTopLevel(t.TempDir()); err != nil {
+		t.Errorf("a folder outside any repository was refused: %v", err)
+	}
+	if err := gitx.CheckTopLevel(filepath.Join(dir, "missing")); err != nil {
+		t.Errorf("a folder that is not there is for other checks: %v", err)
+	}
+	own := filepath.Join(sub, "own")
+	if err := os.MkdirAll(own, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, own, "init", "-q", "-b", "main")
+	if err := gitx.CheckTopLevel(own); err != nil {
+		t.Errorf("a repository of its own inside another was refused: %v", err)
+	}
+}

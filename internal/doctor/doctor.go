@@ -13,6 +13,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/aider"
 	"github.com/Thomas-Pietsch/dudes/internal/config"
 	"github.com/Thomas-Pietsch/dudes/internal/freeze"
+	"github.com/Thomas-Pietsch/dudes/internal/gitx"
 	"github.com/Thomas-Pietsch/dudes/internal/packer"
 	"github.com/Thomas-Pietsch/dudes/internal/pi"
 	"github.com/Thomas-Pietsch/dudes/internal/product"
@@ -80,6 +81,9 @@ func checkGit(root string) Check {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return Check{"git", Fail, fmt.Sprintf("not a git repo: %v (%s)", err, trim(string(out)))}
+	}
+	if err := gitx.CheckTopLevel(root); err != nil {
+		return Check{"git", Fail, err.Error()}
 	}
 	head, err := exec.Command("git", "-C", root, "rev-parse", "--short", "HEAD").Output()
 	if err != nil {

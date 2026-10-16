@@ -231,7 +231,22 @@ func run(args []string) int {
 	}
 }
 
+// loadCfg reads the config and refuses a workspace that is not its repository's top level: the engine
+// would commit and write its notes into the outer repository. help, version, phases, bench and land
+// never come here; doctor reads the config itself and reports the same finding.
 func loadCfg(configPath string) (config.Config, int) {
+	cfg, code := readCfg(configPath)
+	if code != 0 {
+		return cfg, code
+	}
+	if err := gitx.CheckTopLevel(cfg.Workspace); err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
+		return config.Config{}, 1
+	}
+	return cfg, 0
+}
+
+func readCfg(configPath string) (config.Config, int) {
 	cfg, _, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
@@ -882,7 +897,7 @@ func cmdCheck(configPath string, asJSON bool) int {
 }
 
 func cmdDoctor(configPath string) int {
-	cfg, code := loadCfg(configPath)
+	cfg, code := readCfg(configPath)
 	if code != 0 {
 		return code
 	}

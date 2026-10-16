@@ -19,6 +19,30 @@ func Toplevel(dir string) (string, error) {
 	return filepath.FromSlash(strings.TrimSpace(out)), nil
 }
 
+// CheckTopLevel refuses a directory that lies inside a repository without being its top level: git
+// works on the repository around it, so the engine's commits and notes would land there. A directory
+// outside any repository, or one that is its own top level, passes — the paths are compared as the
+// file system sees them (case, links, short names), not as they are spelt.
+func CheckTopLevel(dir string) error {
+	if ok, err := IsRepo(dir); err != nil || !ok {
+		return nil // no repository: other checks say so where it matters
+	}
+	top, err := Toplevel(dir)
+	if err != nil {
+		return nil // inside a .git folder or a bare repository: no work tree to speak of
+	}
+	a, errA := os.Stat(dir)
+	b, errB := os.Stat(top)
+	if errA != nil || errB != nil || os.SameFile(a, b) {
+		return nil
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		abs = dir
+	}
+	return fmt.Errorf("workspace %s is inside the repository %s, not its top level: commits and notes would land in %s, the outer repository. Run from the top level of a repository (workspace \".\"), or make this folder a repository of its own (git init)", abs, top, top)
+}
+
 // Upstream is the remote-tracking branch the current branch follows ("origin/development");
 // ok is false without one (a detached HEAD, a branch that tracks nothing).
 func Upstream(dir string) (name string, ok bool) {
