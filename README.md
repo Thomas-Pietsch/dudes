@@ -28,7 +28,7 @@ An idea goes in. The requirements are written and frozen first, then tests, code
 | How far it is | How products are delivered with DUDES today | Early. Some local models clear the bench ladder; none has yet passed a replay of a real product's first tasks |
 | Start | Copy the [starter](templates/product/) into your product repo: its `AGENTS.md` requires the rules, [`rules/DUDES.md`](rules/DUDES.md). Setup: [Claude Code](docs/CLAUDE_CODE_SETUP.md), [Cursor](docs/CURSOR_SETUP.md), [Cline](docs/CLINE_SETUP.md). First run: [the 10-minute walkthrough](docs/WALKTHROUGH.md) | `make try` below previews it, no model needed. Then [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) |
 
-**Read next:** [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) · [the bench results, failures included](TREND.md#11-engine-workers--measured-skillsframeworkbench) · [the design](CORE.md)
+**Read next:** [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) · [the measured bench summaries, failures included](TREND.md#11-engine-workers--measured-skillsframeworkbench) · [the design](CORE.md)
 
 ---
 
@@ -126,7 +126,7 @@ DUDES is early software. This is where it stands, measured rather than hoped.
 - **The engine.** A Go binary on the standard library alone. A fixed phase machine, mechanical gates, run state in git notes, one commit per step, the human gate with its seal tag. Every capability has a feature ID (F1, F82, …) and a status in [`FEATURES.md`](FEATURES.md).
 - **Local workers.** Text phases through your Ollama host, code through Aider in a pinned container image, tests in a toolchain image of your choice. A work item is split into a task that writes failing tests and a task that writes the code; each is gated.
 - **The stub lifecycle.** The whole flow with stub workers, offline, in seconds: `make try` for you, `make bench` and the Go tests (`make ci`) for the engine's own regression.
-- **The bench.** A ladder of three levels, L1 to L3. Each model runs each level three times from a fresh repository and is scored against a hidden test the worker never sees. The results are in [`TREND.md`](TREND.md) §1.1, **failures included**: some local models clear all three levels, but on a replay of a real product's first slices none passed, and the table says so. The finding that matters: a green gate is the worker's own judgement when the worker writes the test it must pass.
+- **The bench.** A ladder of three levels, L1 to L3. Each model runs each level three times from a fresh repository and is scored against a hidden test the worker never sees. The measured summaries are in [`TREND.md`](TREND.md) §1.1, **failures included** (the per-run lines stay in each runner's local notes and are not published): some local models clear all three levels, but on the full replay of a real product's first slices none passed (a cut to its first slice passed once in three), and the table says so. The finding that matters: a green gate is the worker's own judgement when the worker writes the test it must pass.
 - **One real product item through the engine.** A backup feature of a pilot product, red tests and code by a local 27B model, reviewed six times. Every redo was a real defect the gates had let through. The hand-over around it was manual; `dudes do` is being built to take that over.
 - **The role-play.** The same flow as rule files for IDE agents (Claude Code, Cursor, Cline). It is how products are delivered with DUDES today, and what the engine takes over stage by stage ([`rules/DUDES.md`](rules/DUDES.md)).
 
@@ -207,7 +207,7 @@ make worker-image    # once: the pinned Aider image (needs Docker)
 make bench-models MODELS="qwen3.8:27b gemma4:26b" OLLAMA=http://<host>:11434
 ```
 
-You need Docker and the models pulled on that Ollama host. Each run prints a result line, appends it as a git note in your clone (`NOTES=0` skips that) and keeps its logs in `.dudes/bench-models/`. A failing run is a result, not an error, and failures stay in the table. Levels, settings and the reference check are in [`bench/README.md`](bench/README.md). (`make bench` is the other bench: the hermetic stub lifecycle, no model.)
+You need Docker and the models pulled on that Ollama host. Each run prints a result line, appends it as a git note in your clone, never pushed (`NOTES=0` skips that) and keeps its logs in `.dudes/bench-models/`. A failing run is a result, not an error, and failures stay in the table. Levels, settings and the reference check are in [`bench/README.md`](bench/README.md). (`make bench` is the other bench: the hermetic stub lifecycle, no model.)
 
 Run it on the models you have and open an issue with your result lines: [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) is the short path, and the [bench result form](https://github.com/Thomas-Pietsch/dudes/issues/new?template=bench-result.yml) takes them. Outside runs are what the bench lacks most.
 

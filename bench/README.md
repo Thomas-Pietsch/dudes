@@ -52,7 +52,7 @@ For L1–L3 (an author-tests task, then one implementation task) this is the sam
 
 ## Results
 
-There is one line per run, appended as a git note on the framework commit that ran it (`refs/notes/dudes/bench`). Each line records the date, level, model, run, outcome, steps, minutes, tokens per step, engine commit, worker image and model host. It also records two fields:
+There is one line per run, appended as a git note on the framework commit that ran it (`refs/notes/dudes/bench`). Notes stay in the clone of the runner who ran the bench and are never pushed, so this repository holds no run lines. The summaries that count, failures included, are in `TREND.md` §1.1. Each line records the date, level, model, run, outcome, steps, minutes, tokens per step, engine commit, worker image and model host. It also records two fields:
 
 - `tasks=<done>/<total>`: how many of the contract's tasks the run finished.
 - `ac=<best>/<final>`: how many of the item's acceptance tests were green. The acceptance tests are the top-level tests named in the acceptance-run notes (`refs/notes/dudes/acceptance`, F65), which the engine writes only after a green `go test` gate.
@@ -70,7 +70,7 @@ A line has this shape (`<…>` stands for a value, `[+…]` for further steps):
 
 `worker=` names the code worker (`WORKER=aider|pi`, default `aider`); lines written before it existed are Aider's. `edit=` is Aider's edit format, `n/a` for Pi. A Pi run that a stop rule ended carries `stop=no-tool-call` (a run in which Pi ran and made no tool call) or `stop=scope-or-gate-violation` (the engine discarded a path out of scope). Pi's tokens are the sums of the assistant messages' usage in its JSON events.
 
-- Read the notes with `git log --notes=dudes/bench`. They are the record in your own clone.
+- Read your own runs with `git log --notes=dudes/bench`. The notes live in your clone only; this repository publishes no run lines.
 - The same lines are in `.dudes/bench-models/<stamp>-results.txt`. The logs and the Aider chat of every step sit beside them. That directory is gitignored: raw logs stay out of the repository.
 - **To contribute a result, open an issue with your result lines**: the [bench result form](https://github.com/Thomas-Pietsch/dudes/issues/new?template=bench-result.yml) asks for them, your hardware and your versions. Do not push notes. Maintainers decide what goes into the table in `TREND.md` §1.1.
 - `host=` holds the URL you gave as `OLLAMA`. An issue is public: replace the URL with a short label of your machine (`host=RTX-4090-24GB`) before you post it.
