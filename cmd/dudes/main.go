@@ -349,6 +349,8 @@ func cmdStatus(configPath string, asJSON bool) int {
 	if _, rok, err := recipe.Load(cfg.Workspace, st.Phase); err == nil && rok {
 		run["recipe"] = recipe.Path(st.Phase)
 	}
+	calls, prompt, completion := workerTotals(cfg.Workspace, st.RunID)
+	run["worker_calls"], run["prompt_tokens"], run["completion_tokens"] = calls, prompt, completion
 	pk := review(configPath, cfg, st) // F88: what a task's reviewer decides on
 	if pk != nil {
 		run["review"] = pk
@@ -407,6 +409,9 @@ func cmdStatus(configPath string, asJSON bool) int {
 		fmt.Println("freeze:    (none)")
 	}
 	fmt.Printf("events:    %s\n", events.Path())
+	if calls > 0 {
+		fmt.Printf("worker:    %d calls, %d prompt + %d completion tokens\n", calls, prompt, completion)
+	}
 	if rel, ok := artifact.Path(cfg.Product, st.Phase); ok {
 		fmt.Printf("artifact:  %s", rel)
 		if artifact.Exists(cfg.Workspace, rel) {
@@ -423,6 +428,28 @@ func cmdStatus(configPath string, asJSON bool) int {
 		pk.print(os.Stdout)
 	}
 	return 0
+}
+
+// workerTotals sums the worker calls of one run from the workspace's event log: how many, and their
+// prompt and completion tokens as each event's Usage counts them. Every worker call is one such
+// event, the reflection calls of Aider and the calls of Pi among them (F88). A log that cannot be
+// read whole counts what was read.
+func workerTotals(workspace, runID string) (calls, prompt, completion int) {
+	evs, err := events.ReadAll(workspace)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dudes: %v (the worker totals count what was read)\n", err)
+	}
+	for _, ev := range evs {
+		if ev.Type != "worker" || ev.RunID != runID {
+			continue
+		}
+		calls++
+		if ev.Usage != nil {
+			prompt += ev.Usage.PromptTokens
+			completion += ev.Usage.CompletionTokens
+		}
+	}
+	return calls, prompt, completion
 }
 
 // contractProgress counts the contract's tasks the run has completed, over all phases (F65).

@@ -13,7 +13,9 @@
 #   pi for every implementation task, and .dudes/pi/ holds Pi's models.json and settings.json (Ollama's
 #   /v1 endpoint, temperature 0 as Aider, no compaction, Pi's own retry as Aider retries). Pi is a
 #   harness trial's second arm (TODO E1): after a step that made no tool call, or showed a scope or gate
-#   violation, a pi run stops, and so does the series after two failed pi runs. Tokens come from Pi's JSON events (the engine's `pi:` line per call).
+#   violation, a pi run stops, and so does the series after two failed pi runs.
+#   Tokens (both workers): the engine's worker events of the run, summed in `dudes status -json`
+#   (worker_calls, prompt_tokens, completion_tokens); a step's sent/received is the change since the last read.
 # Level settings: <level dir>/level.env, KEY=value lines (read, not sourced; none needed for L1–L3):
 #   GATE_IMAGE (golang:1.26-bookworm) the gate's toolchain image · GATE_DOCKER=1 the gate gets the
 #   host's Docker (worker.sh --docker) · STEPS the level's steps per task · TEST_COMMAND (go test ./...)
@@ -312,7 +314,7 @@ run() { # level model rep → one result line
 	budget=$(setting "$D" STEPS "$STEPS")
 	log=$logs/$stamp-$name-$(echo "$M" | tr ':/' '__')-$r.log
 	prepare "$D" "$(mktemp -d "${TMPDIR:-/tmp}/dudes-bench-XXXXXX")" "$M"
-	out= i=0 n=0 seen=0 tok= stop= piran=0 picalls=0 t0=$(date +%s)
+	out= i=0 n=0 seen=0 tok= stop= piran=0 picalls=0 sentp=0 sentc=0 t0=$(date +%s) # sentp, sentc: the run's tokens read so far
 	wimage=$(worker_image "$D")
 	stepout=$(mktemp)
 	while :; do
@@ -339,10 +341,15 @@ run() { # level model rep → one result line
 			echo "=== (a pause before the task, not counted)" >>"$log"
 			continue
 		fi
-		if [ $WORKER = pi ]; then # Pi's call is a line from the engine, read from its JSON events (cmd/dudes/main.go)
+		# the step's tokens: every worker call of the run is a worker event, summed by dudes status; the
+		# first step's count includes the test authoring before the loop
+		s=$("$BIN" -config "$cfg" status -json 2>>"$log") || s=
+		np=$(field prompt_tokens) nc=$(field completion_tokens)
+		np=${np:-$sentp} nc=${nc:-$sentc}
+		tok=${tok:+$tok+}$((np - sentp))/$((nc - sentc))
+		sentp=$np sentc=$nc
+		if [ $WORKER = pi ]; then # Pi's tool-call count is a line from the engine, read from its JSON events (cmd/dudes/main.go)
 			calls=$(sed -n 's/^pi: \([0-9]*\) tool call.*/\1/p' "$stepout" | awk '{ s += $1 } END { print s + 0 }')
-			t=$(sed -n 's/^pi: .* \([0-9]*\) sent, \([0-9]*\) received.*/\1 \2/p' "$stepout" | awk '{ a += $1; b += $2 } END { print a + 0 "/" b + 0 }')
-			tok=${tok:+$tok+}$t
 			last=$(ls -t "$ws/.dudes/replies" 2>/dev/null | head -1) # Pi's last reply (its JSON events), kept beside the log (no globs: set -f)
 			[ -z "$last" ] || cp "$ws/.dudes/replies/$last" "$log.step$i.jsonl"
 			[ "$(grep -c '^pi: ' "$stepout" || :)" -eq 0 ] || piran=1
@@ -356,8 +363,6 @@ run() { # level model rep → one result line
 		fi
 		h=$ws/.aider.chat.history.md
 		if [ -f "$h" ]; then
-			t=$(sed -n 's/^> Tokens: \([^ ]*\) sent, \([^ ]*\) received.*/\1\/\2/p' "$h" | tail -1)
-			tok=${tok:+$tok+}${t:-?}
 			mv "$h" "$log.step$i.md"
 		fi
 	done
