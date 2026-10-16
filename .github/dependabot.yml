@@ -1,0 +1,12 @@
+# Version updates for what the repo pins: the CI actions (by SHA) and the worker image's base.
+# The engine has no Go dependencies, so there is no gomod entry.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /docker/worker
+    schedule:
+      interval: weekly

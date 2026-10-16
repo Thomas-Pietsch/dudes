@@ -46,9 +46,15 @@ func Prepare(dir, product string) error {
 	if err := os.WriteFile(filepath.Join(abs, "go.mod"), []byte("module bench.local\n\ngo 1.22\n"), 0o644); err != nil {
 		return err
 	}
-	cfg := fmt.Sprintf("{\n  \"workspace\": %s,\n  \"product\": %s,\n  \"test_command\": [\"go\", \"test\", \"./...\"]\n}\n",
-		jsonString(abs), jsonString(product))
-	if err := os.WriteFile(filepath.Join(abs, "dudes.json"), []byte(cfg), 0o644); err != nil {
+	cfg, err := json.MarshalIndent(struct {
+		Workspace   string   `json:"workspace"`
+		Product     string   `json:"product"`
+		TestCommand []string `json:"test_command"`
+	}{abs, product, []string{"go", "test", "./..."}}, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(abs, "dudes.json"), append(cfg, '\n'), 0o644); err != nil {
 		return err
 	}
 	if err := git(abs, "init", "-q"); err != nil {
@@ -63,11 +69,6 @@ func Prepare(dir, product string) error {
 		return err
 	}
 	return nil
-}
-
-func jsonString(s string) string {
-	b, _ := json.Marshal(s)
-	return string(b)
 }
 
 func git(dir string, args ...string) error {

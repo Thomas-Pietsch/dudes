@@ -5,6 +5,7 @@
 #   - a private IPv4 address (10/8, 172.16/12, 192.168/16) — documentation uses 192.0.2.0/24;
 #   - a home path with a real user name (C:\Users\<name>, /c/Users/<name>, /home/<name>);
 #   - an e-mail address outside example.com and the noreply domains;
+#   - a private key block or a token in a known vendor format (GitHub, AWS, Slack);
 #   - a private marker: one extended regex per line in .dudes/private-markers (untracked, local:
 #     an instance's names and item IDs never live in the public tree, not even in this check).
 #   sh scripts/public-check.sh
@@ -20,6 +21,8 @@ cat >"$patterns" <<'EOF'
 /c/[Uu]sers/[A-Za-z0-9._-]+
 /home/[a-z][a-z0-9._-]+
 [A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
+-----BEGIN [A-Z ]*PRIVATE KEY
+(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,}|AKIA[0-9A-Z]{16}|xox[abposr]-[A-Za-z0-9-]{10,}
 EOF
 [ -f "$markers" ] && grep -v '^[[:space:]]*\(#\|$\)' "$markers" >>"$patterns"
 {
