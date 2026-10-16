@@ -7,6 +7,13 @@
 #   LEVELS (L1 L2 L3)  REPS (3)  STEPS (3, steps per task)  BIN (the engine)  KEEP=1 keeps runs
 #   NOTES=0 skips the git note (smoke runs)
 #   EDIT_FORMAT (whole) Aider's edit format — whole or diff; the result line names it
+#   WORKER (aider) the code worker — aider or pi; the result line names it (worker=). pi runs in the Pi
+#   image on the level's GATE_IMAGE (worker.sh --build-pi first), through the same engine, scope and gate:
+#   the fixture's .dudes/dudes.json gets a pi block with its launch, the copy of the level's contract names
+#   pi for every implementation task, and .dudes/pi/ holds Pi's models.json and settings.json (Ollama's
+#   /v1 endpoint, temperature 0 as Aider, no compaction, Pi's own retry as Aider retries). Pi is a
+#   harness trial's second arm (TODO E1): after a step that made no tool call, or showed a scope or gate
+#   violation, a pi run stops, and so does the series after two failed pi runs. Tokens come from Pi's JSON events (the engine's `pi:` line per call).
 # Level settings: <level dir>/level.env, KEY=value lines (read, not sourced; none needed for L1–L3):
 #   GATE_IMAGE (golang:1.26-bookworm) the gate's toolchain image · GATE_DOCKER=1 the gate gets the
 #   host's Docker (worker.sh --docker) · STEPS the level's steps per task · TEST_COMMAND (go test ./...)
@@ -48,6 +55,8 @@ REPS=${REPS:-3}
 STEPS=${STEPS:-3}
 NOTES=${NOTES:-1}
 EDIT_FORMAT=${EDIT_FORMAT:-whole} # Aider's edit format for every worker (whole: the file again; diff: search/replace blocks)
+WORKER=${WORKER:-aider}
+case $WORKER in aider | pi) ;; *) echo "bench-models: WORKER=$WORKER — aider or pi" >&2; exit 2 ;; esac
 BIN=${BIN:-bin/dudes$(go env GOEXE)} # make passes its own
 mpath() { cygpath -m "$1" 2>/dev/null || printf '%s\n' "$1"; } # a path the engine and Aider read
 root=$(mpath "$(pwd)")
@@ -139,6 +148,11 @@ anchor() { # level dir → where its relative paths start: the level's place in 
 	esac
 }
 
+worker_image() { # level dir → the code worker's image: Aider's, else the Pi image on the level's gate image
+	if [ $WORKER = pi ]; then sh scripts/worker.sh --pi-image "$(setting "$1" GATE_IMAGE golang:1.26-bookworm)"; else printf '%s
+' "$image"; fi
+}
+
 gate_cmd() { # level dir [-v] → the full suite (TEST_COMMAND), -v after `go test` for a verbose run
 	t=$(setting "$1" TEST_COMMAND "go test ./...")
 	[ "${2:-}" = -v ] && case $t in "go test "*) t="go test -v ${t#go test }" ;; esac
@@ -228,14 +242,37 @@ prepare() { # level dir, temp dir, model → the run's fixture at <temp>/repo, s
 	git -C "$ws" add -A
 	git -C "$ws" commit -qm "bench fixture $name"
 	w=$(mpath "$ws")
+	numctx=$(setting "$1" NUM_CTX 32768)
 	cat >"$ws/.dudes/aider-models.yml" <<EOF
 - name: ollama_chat/$3
   edit_format: $EDIT_FORMAT
   extra_params:
     think: false
-    num_ctx: $(setting "$1" NUM_CTX 32768)
+    num_ctx: $numctx
     num_predict: 12288
 EOF
+	piblock=
+	if [ $WORKER = pi ]; then
+		# Pi reaches Ollama through its OpenAI-compatible /v1 endpoint, which sets neither num_ctx nor
+		# num_predict per request: the server's model carries them (a tag with PARAMETER num_ctx / num_predict)
+		# samplingParams (merged into the body as-is): Ollama's /v1 turns thinking off by reasoning_effort "none"
+		# (Pi sends no such field itself); temperature 0 as Aider sends it (Pi sends none: the tag's default)
+		mkdir "$ws/.dudes/pi"
+		cat >"$ws/.dudes/pi/models.json" <<EOF
+{"providers": {"ollama": {"baseUrl": "${OLLAMA%/}/v1", "api": "openai-completions", "apiKey": "ollama",
+  "models": [{"id": "$3", "reasoning": false, "contextWindow": $numctx, "maxTokens": 12288,
+    "samplingParams": {"reasoning_effort": "none", "temperature": 0},
+    "compat": {"supportsDeveloperRole": false, "supportsReasoningEffort": false, "maxTokensField": "max_tokens"}}]}}}
+EOF
+		echo '{"compaction": {"enabled": false}}' >"$ws/.dudes/pi/settings.json" # retry stays Pi's: Aider retries a failed request too
+		# the container sees the repository at the daemon's path (worker.sh translates arguments, not --env)
+		pidir=$(. "$root/scripts/docker.sh" && dpath "$ws/.dudes/pi")
+		piblock=$(printf ',
+  "pi": {"bin": "pi", "launch": ["sh", "%s/scripts/worker.sh", "--image", "%s", "--env", "PI_CODING_AGENT_DIR=%s", "--env", "PI_OFFLINE=1", "--env", "PI_SKIP_VERSION_CHECK=1", "--env", "PI_TELEMETRY=0"], "timeout_sec": 2400,
+    "tools": ["read", "edit", "write", "grep", "find", "ls"],
+    "extra": ["--provider", "ollama", "--model", "%s", "--thinking", "off", "--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files", "--no-mcp", "--no-approve", "--offline"]}' "$root" "$(worker_image "$1")" "$pidir" "$3")
+		sed -i 's/"worker": "aider"/"worker": "pi"/' "$ws/.dudes/contract.json" # the level's contract serves both arms
+	fi
 	launch=$(printf '"%s", ' sh "$root/scripts/worker.sh" $gate)
 	suite=$(printf '"%s", ' $(gate_cmd "$1"))
 	product=$(sed -n 's/^  "product": "\([^"]*\)".*/\1/p' "$1/contract.json" | head -1)
@@ -246,7 +283,7 @@ EOF
   "product": "${product:-bench}",
   "ollama": {"base_url": "$OLLAMA", "model": "$3", "timeout_sec": 900},
   "aider": {"bin": "aider", "launch": ["sh", "$root/scripts/worker.sh"], "model": "ollama_chat/$3", "timeout_sec": 2400,
-    "extra": ["--chat-language", "English", "--model-settings-file", "$w/.dudes/aider-models.yml"]},
+    "extra": ["--chat-language", "English", "--model-settings-file", "$w/.dudes/aider-models.yml"]}$piblock,
   "worktree": false,
   "test_command": [${suite%, }],
   "test_launch": [${launch%, }]
@@ -275,7 +312,8 @@ run() { # level model rep → one result line
 	budget=$(setting "$D" STEPS "$STEPS")
 	log=$logs/$stamp-$name-$(echo "$M" | tr ':/' '__')-$r.log
 	prepare "$D" "$(mktemp -d "${TMPDIR:-/tmp}/dudes-bench-XXXXXX")" "$M"
-	out= i=0 n=0 seen=0 tok= t0=$(date +%s)
+	out= i=0 n=0 seen=0 tok= stop= piran=0 picalls=0 t0=$(date +%s)
+	wimage=$(worker_image "$D")
 	stepout=$(mktemp)
 	while :; do
 		s=$("$BIN" -config "$cfg" status -json 2>>"$log") || s=
@@ -301,6 +339,21 @@ run() { # level model rep → one result line
 			echo "=== (a pause before the task, not counted)" >>"$log"
 			continue
 		fi
+		if [ $WORKER = pi ]; then # Pi's call is a line from the engine, read from its JSON events (cmd/dudes/main.go)
+			calls=$(sed -n 's/^pi: \([0-9]*\) tool call.*/\1/p' "$stepout" | awk '{ s += $1 } END { print s + 0 }')
+			t=$(sed -n 's/^pi: .* \([0-9]*\) sent, \([0-9]*\) received.*/\1 \2/p' "$stepout" | awk '{ a += $1; b += $2 } END { print a + 0 "/" b + 0 }')
+			tok=${tok:+$tok+}$t
+			last=$(ls -t "$ws/.dudes/replies" 2>/dev/null | head -1) # Pi's last reply (its JSON events), kept beside the log (no globs: set -f)
+			[ -z "$last" ] || cp "$ws/.dudes/replies/$last" "$log.step$i.jsonl"
+			[ "$(grep -c '^pi: ' "$stepout" || :)" -eq 0 ] || piran=1
+			picalls=$((picalls + calls)) # the no-tool-call rule reads the whole run, after the loop
+			grep -q '^out of scope, discarded' "$stepout" && stop="scope or gate violation"
+			if [ -n "$stop" ]; then
+				echo "=== pi stop rule: $stop (step $i)" >>"$log"
+				out=fail
+				break
+			fi
+		fi
 		h=$ws/.aider.chat.history.md
 		if [ -f "$h" ]; then
 			t=$(sed -n 's/^> Tokens: \([^ ]*\) sent, \([^ ]*\) received.*/\1\/\2/p' "$h" | tail -1)
@@ -308,6 +361,10 @@ run() { # level model rep → one result line
 			mv "$h" "$log.step$i.md"
 		fi
 	done
+	if [ $WORKER = pi ] && [ -z "$stop" ] && [ $piran = 1 ] && [ $picalls = 0 ]; then
+		stop="no tool call" out=fail # Pi ran in this run and never used a tool
+		echo "=== pi stop rule: $stop (the whole run)" >>"$log"
+	fi
 	if [ -z "$out" ]; then # every task done: the last one's gate must be the full suite, green
 		out=fail
 		grep -q '^tests: PASS$' "$stepout" && ! grep -q '^task slice green' "$stepout" && out=pass
@@ -319,7 +376,7 @@ run() { # level model rep → one result line
 	rm -f "$stepout"
 	min=$((($(date +%s) - t0 + 30) / 60))
 	finish
-	echo "$day $name $M run=$r/$REPS $out steps=$i tasks=$did/$total ac=$ac min=$min tokens=${tok:-none} engine=$engine image=$image host=$OLLAMA edit=$EDIT_FORMAT"
+	echo "$day $name $M run=$r/$REPS $out steps=$i tasks=$did/$total ac=$ac min=$min tokens=${tok:-none} engine=$engine image=$wimage worker=$WORKER host=$OLLAMA edit=$([ $WORKER = pi ] && echo n/a || echo "$EDIT_FORMAT")${stop:+ stop=$(echo "$stop" | tr ' ' '-')}"
 }
 
 reference() { # level → one line: the level checked against its reference solution, no worker
@@ -356,11 +413,18 @@ if [ "$MODELS" = reference ]; then
 fi
 for L in $LEVELS; do
 	for M in $MODELS; do
-		r=1
+		r=1 failed=0
 		while [ "$r" -le "$REPS" ]; do
 			line=$(run "$L" "$M" "$r")
 			echo "$line" | tee -a "$results"
 			[ "$NOTES" = 0 ] || git notes --ref dudes/bench append -m "$line" HEAD
+			if [ $WORKER = pi ]; then # the trial's stop rules: at once on a stop, else after two failed runs
+				case $line in *" pass "*) ;; *) failed=$((failed + 1)) ;; esac
+				if [ $failed -ge 2 ] || case $line in *" stop="*) true ;; *) false ;; esac; then
+					echo "== pi arm stopped after run $r/$REPS: $failed failed, stop rule: $(echo "$line" | sed -n 's/.* stop=//p')" | tee -a "$results"
+					break
+				fi
+			fi
 			r=$((r + 1))
 		done
 	done

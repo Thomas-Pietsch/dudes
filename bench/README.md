@@ -8,6 +8,7 @@ To run it on your own hardware and post the result: [Your 27B in 10 minutes](../
 make bench-models MODELS="qwen3.8:27b gemma4:26b" OLLAMA=http://<model host>:11434
 make bench-models MODELS=qwen3.8:27b OLLAMA=… LEVELS=L1 REPS=1 STEPS=3 KEEP=1   # one quick run, workspace kept
 make bench-models MODELS=qwen3.8:27b OLLAMA=… LEVELS=L1 REPS=1 NOTES=0           # smoke run, no git note
+make bench-models WORKER=pi MODELS=… OLLAMA=…                                    # Pi as the code worker (sh scripts/worker.sh --build-pi <gate image> first)
 ```
 
 | Level | Item | What the worker must do |
@@ -64,8 +65,10 @@ Lines written before these two fields existed lack them. `NOTES=0` skips the not
 A line has this shape (`<…>` stands for a value, `[+…]` for further steps):
 
 ```text
-<date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> host=<model host> edit=<whole|diff>
+<date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> worker=<aider|pi> host=<model host> edit=<whole|diff|n/a> [stop=<rule>]
 ```
+
+`worker=` names the code worker (`WORKER=aider|pi`, default `aider`); lines written before it existed are Aider's. `edit=` is Aider's edit format, `n/a` for Pi. A Pi run that a stop rule ended carries `stop=no-tool-call` (a run in which Pi ran and made no tool call) or `stop=scope-or-gate-violation` (the engine discarded a path out of scope). Pi's tokens are the sums of the assistant messages' usage in its JSON events.
 
 - Read the notes with `git log --notes=dudes/bench`. They are the record in your own clone.
 - The same lines are in `.dudes/bench-models/<stamp>-results.txt`. The logs and the Aider chat of every step sit beside them. That directory is gitignored: raw logs stay out of the repository.

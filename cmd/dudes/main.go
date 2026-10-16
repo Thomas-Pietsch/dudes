@@ -1076,39 +1076,29 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 		return 0
 	}
 
+	// what both code workers get beside the message: files to edit, files to read only
+	files, reads := handover(ws, tools, msg, gateFiles, gateRefs, scopePats)
 	var invoke func(msg string) (string, error)
 	if worker == "pi" {
 		pcfg := cfg.PiRunConfig()
-		if err := pi.LookPath(pcfg.Bin); err != nil {
+		pcfg.Files, pcfg.Read = files, reads
+		if err := pi.LookPath(pcfg.Exe()); err != nil {
 			fmt.Fprintf(os.Stderr, "dudes: %v\n", err)
 			return 1
 		}
 		invoke = func(msg string) (string, error) {
 			fmt.Println("implementation: invoking pi (fresh process)…")
-			return pi.Run(context.Background(), ws, msg, tools, pcfg)
+			out, err := pi.Run(context.Background(), ws, msg, tools, pcfg)
+			// Pi's JSON mode exits 0 on an error reply: the stream is the record, so say what it holds
+			s := pi.Parse(out)
+			fmt.Printf("pi: %d tool call(s), %d failed, %d sent, %d received, stop %s\n", s.ToolCalls, s.ToolErrors, s.Sent, s.Received, nonzero(s.Stop, "none"))
+			return out, err
 		}
 	} else {
 		acfg := cfg.AiderRunConfig()
-		acfg.Extra = append(acfg.Extra, aider.ReadFlags(ws, tools)...)
-		acfg.Files = append([]string{}, msg.Tests...)
-		for _, f := range msg.ReadOnlyTests { // written by the red-first task: read, never change
+		acfg.Files = files
+		for _, f := range reads { // read-only: the task's tools list, the red-first task's tests, other tasks' files the gate names
 			acfg.Extra = append(acfg.Extra, "--read", f)
-		}
-		for _, f := range gateFiles {
-			if !slices.Contains(acfg.Files, f) {
-				acfg.Files = append(acfg.Files, f)
-			}
-		}
-		for _, f := range gateRefs { // another task's file the gate names: read-only
-			acfg.Extra = append(acfg.Extra, "--read", f)
-		}
-		if code, skipped := scopeCode(ws, scopePats, acfg.Files); len(code)+skipped > 0 {
-			acfg.Files = append(acfg.Files, code...)
-			fmt.Printf("scope: %d existing file(s) go to the worker", len(code))
-			if skipped > 0 {
-				fmt.Printf(", %d over the %d KB budget left out", skipped, scopeCodeBudget>>10)
-			}
-			fmt.Println()
 		}
 		flags, err := aider.IgnoreFlags(ws, scopePats)
 		if err != nil {
@@ -1131,6 +1121,34 @@ func runImplementation(cfg config.Config, st *runstate.State, stub bool, packCtx
 		invoke = metered(cfg, st, "aider", cfg.Aider.Model, invoke)
 	}
 	return implementConverged(cfg, st, ws, scopePats, invoke, message, subject, trailers)
+}
+
+// handover is what a code worker gets beside the message (Aider and Pi alike): the files it may
+// edit — the task's tests, the files the gate names, the existing code in the task's scope within a
+// size budget — and the files it only reads — the ones the task's tools list names, the red-first
+// task's tests, other tasks' files the gate names. Each worker passes them its own way.
+func handover(ws string, tools []string, msg aider.Message, gateFiles, gateRefs, scopePats []string) (files, reads []string) {
+	files = append([]string{}, msg.Tests...)
+	for _, f := range gateFiles {
+		if !slices.Contains(files, f) {
+			files = append(files, f)
+		}
+	}
+	rf := aider.ReadFlags(ws, tools) // "--read", path pairs
+	for i := 1; i < len(rf); i += 2 {
+		reads = append(reads, rf[i])
+	}
+	reads = append(reads, msg.ReadOnlyTests...)
+	reads = append(reads, gateRefs...)
+	if code, skipped := scopeCode(ws, scopePats, files); len(code)+skipped > 0 {
+		files = append(files, code...)
+		fmt.Printf("scope: %d existing file(s) go to the worker", len(code))
+		if skipped > 0 {
+			fmt.Printf(", %d over the %d KB budget left out", skipped, scopeCodeBudget>>10)
+		}
+		fmt.Println()
+	}
+	return files, reads
 }
 
 func phaseBody(cfg config.Config, st *runstate.State, cur phase.ID, stub bool, packCtx, taskOverride, discipline string) (body, source string, err error) {

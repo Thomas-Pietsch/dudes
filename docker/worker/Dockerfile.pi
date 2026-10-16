@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1
+# The Pi worker's image (the harness trial, TODO E1): an instance's toolchain image (BASE, a Node
+# 22.19+ image such as the instance's ci image) plus Pi, pinned. Built by `sh scripts/worker.sh
+# --build-pi <base-image>`, which holds PI_VERSION. Pi has no approval gate and no sandbox: it runs
+# only here, through scripts/worker.sh, never with the host's Docker socket.
+ARG BASE
+FROM ${BASE}
+ARG PI_VERSION
+# Pi's grep and find tools use ripgrep and fd; with PI_OFFLINE=1 it downloads neither.
+RUN apt-get update && apt-get install -y --no-install-recommends ripgrep fd-find \
+	&& ln -s "$(command -v fdfind)" /usr/local/bin/fd && rm -rf /var/lib/apt/lists/*
+RUN npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSION}"
+# Any --user works: Pi's caches land in /tmp, which dies with the container.
+ENV HOME=/tmp

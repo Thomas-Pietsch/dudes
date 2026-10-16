@@ -3,6 +3,9 @@
 # host, one container per worker process, the repository mounted at the path the Docker daemon
 # sees, the working directory kept.
 #   sh scripts/worker.sh --build         build the image (make worker-image)
+#   sh scripts/worker.sh --build-pi <base-image>  build the Pi worker image on an instance's toolchain image
+#   sh scripts/worker.sh --pi-image <base-image>  print that image's tag (dudes-worker:pi-<version>-<base name>)
+#                                        (docker/worker/Dockerfile.pi; the trial's pi.launch names it with --image)
 #   sh scripts/worker.sh <cmd> [args…]   run <cmd> here (the engine's aider.launch, make shell)
 #   sh scripts/worker.sh --image <img> [--volume <name>:<path>]… [--env <name>=<value>]… [--docker]
 #                        <cmd> [args…]   the same in another image — the product's toolchain for the
@@ -15,11 +18,18 @@
 set -eu
 AIDER_VERSION=0.86.2
 IMAGE=dudes-worker:aider-$AIDER_VERSION-p1 # -pN: security overrides in docker/worker/Dockerfile
+PI_VERSION=1.3.0 # @earendil-works/pi-coding-agent, exact: 8 releases in 15 days, a minor one with breaking changes (TREND §5)
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/docker.sh"
 
 if [ "${1:-}" = --build ]; then
 	exec $DOCKER build -t "$IMAGE" --build-arg AIDER_VERSION=$AIDER_VERSION "$(dpath "$here/../docker/worker")"
+fi
+pi_image() { printf 'dudes-worker:pi-%s-%s\n' "$PI_VERSION" "$(printf '%s' "${1%%:*}" | tr '/' '-')"; }
+if [ "${1:-}" = --pi-image ] && [ $# -eq 2 ]; then pi_image "$2"; exit 0; fi
+if [ "${1:-}" = --build-pi ] && [ $# -eq 2 ]; then
+	exec $DOCKER build -t "$(pi_image "$2")" --build-arg BASE="$2" --build-arg PI_VERSION=$PI_VERSION \
+		-f "$(dpath "$here/../docker/worker/Dockerfile.pi")" "$(dpath "$here/../docker/worker")"
 fi
 volumes= envs= docker= # named volumes and environment settings, one per line
 while :; do
@@ -33,7 +43,7 @@ while :; do
 	*) break ;;
 	esac
 done
-[ $# -gt 0 ] || { echo "usage: worker.sh --build | [--image <img>] [--volume <name>:<path>]… [--env <name>=<value>]… [--docker] <cmd> [args…]" >&2; exit 2; }
+[ $# -gt 0 ] || { echo "usage: worker.sh --build | --build-pi <base-image> | --pi-image <base-image> | [--image <img>] [--volume <name>:<path>]… [--env <name>=<value>]… [--docker] <cmd> [args…]" >&2; exit 2; }
 
 top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 topd=$(dpath "$top")

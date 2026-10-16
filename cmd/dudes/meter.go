@@ -12,6 +12,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/events"
 	"github.com/Thomas-Pietsch/dudes/internal/ollama"
 	"github.com/Thomas-Pietsch/dudes/internal/phase"
+	"github.com/Thomas-Pietsch/dudes/internal/pi"
 	"github.com/Thomas-Pietsch/dudes/internal/redact"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
 )
@@ -21,7 +22,7 @@ import (
 // under .dudes/replies/ for the task's review packet.
 
 // metered wraps a code worker's call so that recordCall records it: the tokens Aider reports
-// (aider.Usage; Pi reports none), the duration, the reply.
+// (aider.Usage; pi.Parse for Pi), the duration, the reply.
 func metered(cfg config.Config, st *runstate.State, worker, model string, invoke func(string) (string, error)) func(string) (string, error) {
 	return func(msg string) (string, error) {
 		start := time.Now()
@@ -30,6 +31,11 @@ func metered(cfg config.Config, st *runstate.State, worker, model string, invoke
 		if worker == "aider" {
 			if sent, received, ok := aider.Usage(out); ok {
 				u.PromptTokens, u.CompletionTokens, u.Counted = sent, received, "aider"
+			}
+		}
+		if worker == "pi" { // from the JSON event stream: the assistant messages' usage
+			if s := pi.Parse(out); s.Counted {
+				u.PromptTokens, u.CompletionTokens, u.Counted = s.Sent, s.Received, "pi"
 			}
 		}
 		recordCall(cfg, st, u, time.Since(start), out, err)

@@ -81,6 +81,12 @@ type PiConfig struct {
 	Bin        string   `json:"bin"`
 	TimeoutSec int      `json:"timeout_sec"`
 	Extra      []string `json:"extra"`
+	// Launch starts Pi through another command — ["sh", "<dudes>/scripts/worker.sh", "--image", …]
+	// runs it in the Pi worker image. Pi has no approval gate: it runs only so. Empty → bin runs on
+	// the host.
+	Launch []string `json:"launch"`
+	// Tools are Pi's own tool names (--tools). Empty → the task's tools list, as before.
+	Tools []string `json:"tools"`
 }
 
 // PackerConfig is optional; empty fields use Repomix defaults.
@@ -262,8 +268,10 @@ func (c Config) PackerRunConfig() packer.Config {
 // PiRunConfig builds pi.Config from engine settings.
 func (c Config) PiRunConfig() pi.Config {
 	cfg := pi.Config{
-		Bin:   c.Pi.Bin,
-		Extra: append([]string{}, c.Pi.Extra...),
+		Bin:    c.Pi.Bin,
+		Extra:  append([]string{}, c.Pi.Extra...),
+		Launch: c.Pi.Launch,
+		Tools:  append([]string{}, c.Pi.Tools...),
 	}
 	if c.Pi.TimeoutSec > 0 {
 		cfg.Timeout = time.Duration(c.Pi.TimeoutSec) * time.Second

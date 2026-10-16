@@ -18,3 +18,13 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("bin=%s", cfg.Bin)
 	}
 }
+
+func TestExeIsTheLauncherElseTheBinary(t *testing.T) {
+	c := pi.Config{Bin: "pi", Launch: []string{"sh", "worker.sh"}}
+	if c.Exe() != "sh" {
+		t.Fatalf("exe=%s", c.Exe())
+	}
+	if (pi.Config{}).Exe() != "pi" {
+		t.Fatal("default exe must be pi")
+	}
+}

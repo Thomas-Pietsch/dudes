@@ -7,7 +7,7 @@ if command -v docker >/dev/null 2>&1; then
 elif command -v wsl.exe >/dev/null 2>&1; then
 	DOCKER='wsl.exe -e docker'
 	export MSYS_NO_PATHCONV=1 # Git Bash must not rewrite the /mnt/c/… arguments handed to wsl.exe
-	wsl_root=$(wsl.exe -e wslpath -u 'C:/' | tr -d '\r')
+	wsl_root=$(wsl.exe -e wslpath -u 'C:/' </dev/null | tr -d '\r') # </dev/null: wsl.exe would drain the caller's stdin
 	wsl_root=${wsl_root%c/} # /mnt/ unless wsl.conf moves the automount root
 	dpath() {
 		p=$(cygpath -m "$1") # /c/x, /tmp/x, C:\x → C:/x
