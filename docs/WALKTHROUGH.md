@@ -62,18 +62,18 @@ It took `Sample Book` from the sample, because the sample is the format it was t
 
 ## 3. QA (Author) writes tests that fail
 
-It wrote one test per acceptance criterion, named after the item and the criterion (`TestBK001AC1`), stubbed the code so the tests compile (a function that panics with `not implemented`), set `TEST = go test ./...` in the `Makefile`, ran `make test` and saw it fail, then committed: `test(shelf): write tests from PRD §3 REQ-ADD and REQ-TITLE [🔹QA Engineer]`. Check it yourself in step 7.
+It wrote one test per acceptance criterion, named after the item and the criterion (`TestBK001AC1`), stubbed the code so the tests compile (a function that panics with `not implemented`), set `TEST = go test ./...`, `FMT` (`gofmt`) and `LINT = go vet ./...` in the `Makefile`, ran `make check` and saw it fail in the tests only, then committed: `test(shelf): write tests from PRD §3 REQ-ADD and REQ-TITLE [🔹QA Engineer]`. Check it yourself in step 7.
 
 ## 4. The Developer writes the code
 
-It built from the spec, not from the tests: in its step it opened no test file. It wrote the code until `make test` was green, changed no test file, and committed: `feat(shelf): implement add/list shelf API per BOOKSHELF_TA [🔹Developer]`.
+It built from the spec, not from the tests: in its step it opened no test file. It wrote the code until `make check` was green, changed no test file, and committed: `feat(shelf): implement add/list shelf API per BOOKSHELF_TA [🔹Developer]`.
 
 ## 5. QA (Verify) writes the report
 
 It ran the suite again, cut `release/bookshelf-v0.1` from the verified commit, wrote the QR there and committed it (`rules/DUDES.md` §6, *One Repository*, and §12: the QR goes on the release branch, nothing else does). `rules/TESTING.md` §5 sets its shape:
 
 ```markdown
-**Verdict.** ✅ Pass · **Verified commit.** eb975e2 · **Command.** `make test`
+**Verdict.** ✅ Pass · **Verified commit.** eb975e2 · **Command.** `make check`
 
 | PRD Section | Tests Written (QA Author) | Tests Passing (QA Verify) | Status |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Some runs close this message with `✅ COMPLETE`, some with `⏸ WAITING`. Eithe
 | `Skip demo` | QA closes without a demo | Not run |
 | `Not good enough: …` | The feedback goes to the role that owns it, then QA runs again | See below. 2 minutes 27 seconds, and it asked you again |
 
-After `Seal it`, `git log --oneline --all --decorate` shows `(tag: bookshelf-v0.1.0, release/bookshelf-v0.1)` on the QR commit, and `git tag -n` its message: `Bookshelf R0.1 — verified commit eb975e2 (QA QR: ✅ Pass, make test)`.
+After `Seal it`, `git log --oneline --all --decorate` shows `(tag: bookshelf-v0.1.0, release/bookshelf-v0.1)` on the QR commit, and `git tag -n` its message: `Bookshelf R0.1 — verified commit eb975e2 (QA QR: ✅ Pass, make check)`.
 
 A rejection is a loop through the flow, not a patch. We sent this, in a new chat:
 
@@ -116,7 +116,7 @@ A rejection is a loop through the flow, not a patch. We sent this, in a new chat
 Not good enough: a title of 150 letters é is refused as too long. The limit is 200 characters, not 200 bytes.
 ```
 
-QA (Author) wrote and committed a failing test for it first (`TestBK001AC1Multibyte`, 150 × `é`, expects `201`) and saw it fail. The Developer changed the check to count characters; `make test` went green. QA (Verify) merged `development` into the release branch, ran the suite again and updated the QR in place: a merge commit and one QR commit, the verified commit changed, a row added. The new chat did not matter: the state is in git, not in the conversation.
+QA (Author) wrote and committed a failing test for it first (`TestBK001AC1Multibyte`, 150 × `é`, expects `201`) and saw it fail. The Developer changed the check to count characters; `make check` went green. QA (Verify) merged `development` into the release branch, ran the suite again and updated the QR in place: a merge commit and one QR commit, the verified commit changed, a row added. The new chat did not matter: the state is in git, not in the conversation.
 
 A request outside the frozen spec starts at the PM instead. In an earlier run we answered `Not good enough: I also want to look up one book by its id. Add that.` The agent said it was new scope, handed it to the PM, who changed the spec on `development`; QA (Author) wrote the red tests, the Developer made them green, and QA (Verify) re-verified and updated the QR.
 
@@ -127,13 +127,13 @@ Two minutes, and the part that matters. The agent says ✅; these commands say i
 ```sh
 git log --oneline --graph --all --decorate         # who committed what, in which order
 git switch --detach <the QA (Author) commit>       # the test(…) commit
-make test                                          # red: FAIL, panic: not implemented
+make check                                         # red: FAIL, panic: not implemented
 git switch development
-make test                                          # green
+make check                                         # green
 git show release/bookshelf-v0.1:spec/BOOKSHELF_QR.md
 ```
 
-In our run `make test` at the QA (Author) commit printed `--- FAIL: TestBK001AC1` and `panic: not implemented`: red because the behaviour is missing, which is the point of writing tests first. Your run words it differently; it must still fail, and for that reason. Then read the Developer's diff against the spec's words, not against the tests.
+In our run `make check` at the QA (Author) commit printed `--- FAIL: TestBK001AC1` and `panic: not implemented`: red because the behaviour is missing, which is the point of writing tests first. Your run words it differently; it must still fail, and for that reason. Then read the Developer's diff against the spec's words, not against the tests.
 
 ## Where the flow leans on the agent
 
@@ -142,7 +142,7 @@ This is the role-play: rule files an agent follows, one agent in one conversatio
 | The rule | What enforces it | What we saw, and the gap |
 |---|---|---|
 | The roles run in order, none skipped, each hands off | The agent | Four roles, in order, each with its header and handoff line. Nothing stops an agent from skipping one. The log shows who committed what |
-| Tests before code | The agent | The commit order shows it. Step 7 proves it: check out the test commit and run `make test` |
+| Tests before code | The agent | The commit order shows it. Step 7 proves it: check out the test commit and run `make check` |
 | A `[🔹Role]` tag on every commit | `hooks/commit-msg`, once you set `core.hooksPath`; otherwise the agent | With the hooks on, an untagged commit is refused. Without them, nothing refuses it |
 | The QR only on the release branch | `hooks/commit-msg`, once you set `core.hooksPath`; otherwise the agent | With the hooks on, a commit on `release/*` by any role but QA, or of any file but the QR, is refused; QA's merge of `development` is not. The hook knows the repo type from the `Repo type` row of the starter's `AGENTS.md`. A QR commit on `development` is refused too |
 | Roles read only their own inputs (`rules/DUDES.md` §5, Role Isolation Mandate) | The agent: one model, one conversation | "Forget" is an instruction, not a wall. The Developer's context still held the tests. Where the host has subagents, `rules/DUDES.md` §1 fixes narrower splits |

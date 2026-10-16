@@ -8,7 +8,7 @@ Run the DUDES role-play in your own product repo with [Claude Code](https://code
 |---|---|
 | Claude Code | Checked on v2.1.267. Since v2.1.277 Claude Code also reads an `AGENTS.md` alone when there is no `CLAUDE.md` ([memory docs](https://code.claude.com/docs/en/memory#agents-md)); the starter does not depend on that |
 | Your repo | A git repo, any language. Not the DUDES clone |
-| make | The flow runs `make test`. On Windows: Git Bash and GNU make ([Platforms](../README.md#platforms)) |
+| make | The flow runs `make check`. On Windows: Git Bash and GNU make ([Platforms](../README.md#platforms)) |
 | A model | [`TREND.md`](../TREND.md) §1.2 says which hosted model fits which work, with sources and the check date. Every hosted model receives your code and your specs |
 
 ## 1. Put DUDES inside your repo

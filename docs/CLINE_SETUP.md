@@ -11,7 +11,7 @@ Run the DUDES role-play in your own product repo with [Cline](https://docs.cline
 | Cline | The extension in VS Code, or another editor it supports ([install](https://docs.cline.bot/getting-started/installing-cline)): open Extensions, search `Cline`, install |
 | A provider and model | Set in Cline's settings. [`TREND.md`](../TREND.md) §1.2 says which hosted model fits which work, with sources and the check date. Every hosted model receives your code and your specs |
 | Your repo | A git repo, any language. Not the DUDES clone |
-| make | The flow runs `make test`. On Windows: Git Bash and GNU make ([Platforms](../README.md#platforms)) |
+| make | The flow runs `make check`. On Windows: Git Bash and GNU make ([Platforms](../README.md#platforms)) |
 
 A local model through Cline (Ollama) runs as an agent, but the role-play asks a model to hold about 47 KB of rules and a long flow. That has not been measured with DUDES. The measured local path is the engine, [door 2](../README.md#two-ways-in).
 
@@ -47,7 +47,7 @@ Then commit: `git add -A && git commit -m "chore: DUDES starter [🔹human]"`.
 
 1. Open the root of your product repo as the VS Code folder.
 2. Open the Cline panel. Click the scale icon at the bottom of it: the Rules panel lists every rule Cline detected, each with a toggle ([Cline Rules](https://docs.cline.bot/features/cline-rules)). `AGENTS.md` must be listed and on.
-3. Switch to **Act** mode. In Plan mode Cline "cannot modify any files or execute commands" ([Plan and Act](https://docs.cline.bot/core-workflows/plan-and-act)), and the flow writes files and runs `make test`.
+3. Switch to **Act** mode. In Plan mode Cline "cannot modify any files or execute commands" ([Plan and Act](https://docs.cline.bot/core-workflows/plan-and-act)), and the flow writes files and runs `make check`.
 4. Start a new task:
 
 ```text

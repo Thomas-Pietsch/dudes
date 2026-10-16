@@ -6,13 +6,13 @@ Three files that make your product repo a DUDES role-play repo: an IDE agent (Cl
 |---|---|
 | `AGENTS.md` | The entry. Requires the DUDES rules. Names the repo type (spec and dev in one repo), the roles, the toggles (all off) and where its release is set (`rules/DUDES.md` §6, *One Repository*) |
 | `CLAUDE.md` | One line, `@AGENTS.md`. Claude Code reads `CLAUDE.md`. Cursor and Cline read `AGENTS.md` themselves and do not need it |
-| `Makefile` | The goals the flow runs: `make help` and `make test`. Set `TEST` once |
+| `Makefile` | The goals the flow runs: `make help`, `make test` (the tests alone) and `make check` (the gate: format check, static checks, tests). Set `TEST`, `FMT` and `LINT` once |
 
 ## Use it
 
 1. Put DUDES inside your repo, as a git submodule: `git submodule add https://github.com/Thomas-Pietsch/dudes.git .dudes-framework`
-2. Copy the files into your repo root: `cp .dudes-framework/templates/product/AGENTS.md .dudes-framework/templates/product/CLAUDE.md .dudes-framework/templates/product/Makefile .` You have a `Makefile` already: add its `test` goal to yours instead.
-3. Set `TEST` in the `Makefile` to the command that runs all your tests. In a new repo you can leave it: QA (Author) sets it for the stack the TA names.
+2. Copy the files into your repo root: `cp .dudes-framework/templates/product/AGENTS.md .dudes-framework/templates/product/CLAUDE.md .dudes-framework/templates/product/Makefile .` You have a `Makefile` already: add its `test` and `check` goals to yours instead.
+3. Set `TEST` (all your tests), `FMT` (a format check) and `LINT` (static checks) in the `Makefile`. A tool you do not use: set it to `true`, on purpose. In a new repo you can leave them: QA (Author) sets them for the stack the TA names.
 4. Open the repo in your agent and ask `As PM & Software Architect: which files do you read before you write a spec?` The answer starts with `## 🔷 PM & Software Architect`, then the `Active rules: … · Toggles: …` line.
 
 The guides give each host's checks and fixes: [Claude Code](../../docs/CLAUDE_CODE_SETUP.md) (it adds a `.claude/settings.json`), [Cursor](../../docs/CURSOR_SETUP.md), [Cline](../../docs/CLINE_SETUP.md). The first run, on a sample product: [the 10-minute walkthrough](../../docs/WALKTHROUGH.md). Running the starter in Cursor or Cline: [the IDE run sheet](../../docs/IDE_RUN_SHEET.md).

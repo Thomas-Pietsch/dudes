@@ -35,6 +35,63 @@ if [ -n "$ITEM" ] && ! printf '%s\n' "$MSG" | grep -qxF "Item: $ITEM"; then
   exit 1
 fi
 
+# ── 1c. Role paths (§14) ────────────────────────────────────────────
+# The product's AGENTS.md may carry a `Role paths` row: `Role: globs; Role, Role: globs; …`. The first
+# entry whose glob matches a staged path owns it; a role tag that names one of the row's roles may
+# commit only the paths its role owns. A tag that names none (DevOps, human, engine), a merge in
+# progress and a repo without the row keep today's behaviour. `*` also matches `/`.
+owns() { # $1 = a comma list of roles, $2 = the tag: succeeds when the tag names one of them
+  printf '%s\n' "$1" | tr ',' '\n' | {
+    while IFS= read -r o; do
+      o=$(printf '%s' "$o" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+      if [ -n "$o" ]; then case "$2" in *"$o"*) exit 0 ;; esac; fi
+    done
+    exit 1
+  }
+}
+PATHROW=$(sed -n 's/^|[[:space:]]*Role paths[[:space:]]*|\(.*\)|[[:space:]]*$/\1/p' "$(git rev-parse --show-toplevel)/AGENTS.md" 2>/dev/null | head -1 | tr -d '`')
+if [ -n "$PATHROW" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  set -f
+  ENTRIES=$(printf '%s\n' "$PATHROW" | tr ';' '\n' | grep ':')
+  NAMED=""
+  while IFS= read -r e; do
+    owns "${e%%:*}" "$ROLE" && NAMED=1
+  done <<EOF2
+$ENTRIES
+EOF2
+  if [ -n "$NAMED" ]; then
+    BAD=""
+    STAGED=$(git -c core.quotepath=off diff --cached --no-renames --name-only)
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      OWN=""
+      while IFS= read -r e; do
+        for pat in ${e#*:}; do
+          case "$p" in $pat) OWN=${e%%:*}; break ;; esac
+        done
+        [ -n "$OWN" ] && break
+      done <<EOF2
+$ENTRIES
+EOF2
+      if [ -n "$OWN" ] && ! owns "$OWN" "$ROLE"; then
+        BAD="$BAD   $p  (owner: $(printf '%s' "$OWN" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'))
+"
+      fi
+    done <<EOF2
+$STAGED
+EOF2
+    if [ -n "$BAD" ]; then
+      echo ""
+      echo "❌ DUDES §14: role $ROLE does not own these staged paths (Role paths row of AGENTS.md):"
+      printf '%s' "$BAD"
+      echo "   Fix: unstage them and hand off to the role that owns them, or commit them under that role."
+      echo ""
+      exit 1
+    fi
+  fi
+  set +f
+fi
+
 # ── 2. Branch-role matrix (§12) ─────────────────────────────────────
 case "$BRANCH" in
   release/*)

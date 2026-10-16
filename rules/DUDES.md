@@ -139,6 +139,8 @@ Every role executes these tasks **in this exact order** — no skipping, no reor
                           changes nothing. OFF (default): one pass — continue.
 5. TEST GATE            — All test pyramid layers must pass for your domain.
                           Run the applicable layers (unit, integration, E2E) per repo AGENTS.md.
+                          The instance defines one gate goal (`make check`: format check, static
+                          checks, all tests) and every role's done names it.
                           ⚠️ HARD GATE: Any failure = 🔴 Critical. Do NOT proceed to step 6.
 6. COMMIT OUTPUT        — `git add` + `git commit -m "<type>(<scope>): <desc> [🔹<Role>]"`
                           ⚠️ HARD GATE: `git status` must show clean working tree for your domain.
@@ -371,6 +373,8 @@ Enables `git log --grep='🔹<Role>'` for audit trails.
 When a work item is bound, `hooks/pre-commit` enforces its writable paths (`.dudes/writable`). Without one: before editing a file, check that it falls within the active role's domain (repo `AGENTS.md`).
 
 Outside domain → **stop, hand off to correct role, continue.**
+
+A product whose `AGENTS.md` has a `Role paths` row (the starter does) gets it enforced: `hooks/commit-msg` refuses a commit whose staged paths belong to another role than its tag, naming the path and its owner. A merge, a tag that names no role of the row (DevOps, human, engine) and a repo without the row are not checked.
 
 ---
 

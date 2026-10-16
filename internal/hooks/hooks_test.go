@@ -168,3 +168,108 @@ func TestCommitMsgBranchRoles(t *testing.T) {
 		})
 	}
 }
+
+// The role boundary of commit-msg (§14): with a `Role paths` row in the product's AGENTS.md, a
+// commit whose staged paths belong to another role than its tag is refused, naming the path and
+// its owner. No row, a tag naming no role of the row, and a merge in progress keep the old behaviour.
+func TestCommitMsgRolePaths(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not on PATH")
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", "hooks", "commit-msg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const row = "| Role paths | `QA Engineer: spec/*_QR.md; PM: spec/*; QA Engineer: *_test.* tests/* */tests/*; QA Engineer, Developer: Makefile; Developer: *` |\n"
+	const typeRow = "| Repo type | Spec and dev in one repo: the spec level and the dev level |\n"
+	cases := []struct {
+		name    string
+		agents  string   // AGENTS.md of the repo
+		files   []string // staged
+		msg     string
+		merge   bool
+		ok      bool
+		mention string // what a refusal names
+	}{
+		{"QA, a test file", row, []string{"pkg/a_test.go"}, "test(x): a case [🔹QA Engineer]", false, true, ""},
+		{"QA, a test under tests/", row, []string{"tests/a.sh"}, "test(x): a case [🔹QA Engineer]", false, true, ""},
+		{"QA, a source file", row, []string{"pkg/a.go"}, "fix(x): a bug [🔹QA Engineer]", false, false, "pkg/a.go  (owner: Developer)"},
+		{"QA, a test file and a source file", row, []string{"pkg/a_test.go", "pkg/a.go"}, "fix(x): a bug [🔹QA Engineer]", false, false, "pkg/a.go"},
+		{"Developer, a source file", row, []string{"pkg/a.go"}, "feat(x): a route [🔹Developer]", false, true, ""},
+		{"Backend Developer, a source file", row, []string{"pkg/a.go"}, "feat(x): a route [🔹Backend Developer]", false, true, ""},
+		{"Developer, a test file", row, []string{"pkg/a_test.go"}, "feat(x): a route [🔹Developer]", false, false, "pkg/a_test.go  (owner: QA Engineer)"},
+		{"Developer, the spec", row, []string{"spec/X_PRD.md"}, "docs(x): a note [🔹Developer]", false, false, "spec/X_PRD.md  (owner: PM)"},
+		{"PM, the spec", row, []string{"spec/X_PRD.md"}, "docs(x): a requirement [🔹PM & Software Architect]", false, true, ""},
+		{"PM, the QR", row, []string{"spec/X_QR.md"}, "docs(x): a note [🔹PM & Software Architect]", false, false, "spec/X_QR.md  (owner: QA Engineer)"},
+		{"QA, the QR", row, []string{"spec/X_QR.md"}, "docs(x): run 1 [🔹QA Engineer]", false, true, ""},
+		{"QA, the Makefile", row, []string{"Makefile"}, "test(x): the TEST variable [🔹QA Engineer]", false, true, ""},
+		{"Developer, the Makefile", row, []string{"Makefile"}, "feat(x): a goal [🔹Developer]", false, true, ""},
+		{"PM, the Makefile", row, []string{"Makefile"}, "docs(x): a note [🔹PM & Software Architect]", false, false, "Makefile"},
+		{"no row, QA, a source file", "", []string{"pkg/a.go"}, "fix(x): a bug [🔹QA Engineer]", false, true, ""},
+		{"no row, Developer, a test file", typeRow, []string{"pkg/a_test.go"}, "feat(x): a route [🔹Developer]", false, true, ""},
+		{"a tag naming no role of the row", row, []string{"pkg/a_test.go", "spec/X_PRD.md"}, "chore(x): hooks [🔹AI-driven DevOps Engineer]", false, true, ""},
+		{"the human's own commit", row, []string{"pkg/a.go"}, "chore(x): a fix [🔹human]", false, true, ""},
+		{"a merge in progress", row, []string{"pkg/a_test.go"}, "merge: line [🔹Developer]", true, true, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ws := t.TempDir()
+			git := func(args ...string) {
+				t.Helper()
+				if out, err := exec.Command("git", append([]string{"-C", ws}, args...)...).CombinedOutput(); err != nil {
+					t.Fatalf("git %v: %v\n%s", args, err, out)
+				}
+			}
+			write := func(rel, body string) {
+				t.Helper()
+				p := filepath.Join(ws, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			git("init", "-q")
+			git("config", "user.email", "dudes@test")
+			git("config", "user.name", "dudes-test")
+			git("config", "core.hooksPath", filepath.Join(ws, "no-hooks"))
+			git("checkout", "-q", "-b", "development")
+			write("README.md", "base\n")
+			git("add", "README.md")
+			if c.agents != "" {
+				write("AGENTS.md", c.agents)
+				git("add", "AGENTS.md")
+			}
+			git("commit", "-q", "-m", "base")
+			if c.merge {
+				git("checkout", "-q", "-b", "line")
+				for _, f := range c.files {
+					write(f, "change\n")
+					git("add", f)
+				}
+				git("commit", "-q", "-m", "line")
+				git("checkout", "-q", "development")
+				git("merge", "-q", "--no-ff", "--no-commit", "line")
+			} else {
+				for _, f := range c.files {
+					write(f, "change\n")
+					git("add", f)
+				}
+			}
+			msg := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+			if err := os.WriteFile(msg, []byte(c.msg+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("sh", hook, msg)
+			cmd.Dir = ws
+			out, err := cmd.CombinedOutput()
+			if (err == nil) != c.ok {
+				t.Fatalf("accepted=%v, want %v\n%s", err == nil, c.ok, out)
+			}
+			if c.mention != "" && !strings.Contains(string(out), c.mention) {
+				t.Fatalf("the refusal does not name %q\n%s", c.mention, out)
+			}
+		})
+	}
+}
