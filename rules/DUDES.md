@@ -54,13 +54,11 @@ In a host with subagents (Claude Code, Cursor) a role splits its work only this 
 
 | Role | Subagent | Gets | Returns | The role then |
 |------|----------|------|---------|---------------|
-| PM | consistency sweep | the changed spec documents, `dudes item check` | findings with ID and place | fixes or rejects each |
-| QA Engineer (Author) | one red-test writer per acceptance criterion | the criterion from the item pack, its test file | a test that fails because the behaviour is missing | reviews each test (`code-review`, *red test*) |
+| PM | consistency sweep | the changed spec documents and the ID families they use (`dudes item check`, where the engine is installed) | findings with ID and place | fixes or rejects each |
+| QA Engineer (Author) | one red-test writer per acceptance criterion | the criterion from the frozen spec, its test file | a test that fails because the behaviour is missing | reviews each test (`code-review`, *red test*) |
 | Developer | one implementer per slice | the reviewed tests (read-only), the slice's scope | code with the slice's gate green | reviews the diff, merges |
 | QA Engineer (Verify) | one verifier per acceptance criterion | the criterion, its test, the recorded run | verdict with evidence | writes the QR rows |
 | CEO, Product Visionary | `research` | the question | cited, dated findings | decides |
-
-Where `make help` lists `slice`, the engine's local worker writes the red tests and the code: the Developer writes the slicing — one JSON file per slice, at a path of their choice, naming the item's criteria, the code's scope and the test files (`FEATURES.md` F88) — and passes it as `SLICING=`; QA (Author) and the Developer run the goals (`slice`, `review`, `approve`, `redo`, `land`), review at each pause, and spawn no red-test writer or implementer of their own.
 
 **Inheritance principle:** DUDES (`rules/`) is the base class — it defines common rules, tasks, and flow that every agent inherits. A role-specific `AGENTS.md` extends the base: it inherits everything from DUDES and only adds domain-specific tasks, boundaries, and Definition of Done. No role redefines what DUDES already provides (DRY). The `⚠️ Framework Requirement` in every `AGENTS.md` is the `requires parent` declaration — without it, the role cannot function.
 
@@ -234,6 +232,16 @@ The full product cycle spans multiple repos in a fixed sequence. Each cycle can 
 
 **Traceability is git alone — no reference file.** Dev→Spec: the release branch is the frozen spec; its fork point is the freeze, and only QA commits there (`hooks/commit-msg`), so nothing but the QR changes after it. Spec changes during a cycle go to `development` and reach the next line. Spec→Dev: `*_QR.md` on the release branch names the verified dev commit = evidence of delivery; each cycle adds a QR commit, so git history shows quality progression. Seal: the same tag name in spec and dev repos. Release is sealed **only by the human**.
 
+### One Repository
+
+One repository can hold spec and code, the spec level and the dev level of §4 together (the lead level has no role: the human decides). The cycle above is the same; what differs is where its steps sit:
+
+- `development` holds spec, tests and code.
+- **The freeze** is the PM's last spec commit on `development`. QA and the Developer build from it. A spec change after it starts a new cycle.
+- **The release branch** `release/<product>-v<X.Y>` is cut by QA (Verify) from the verified commit, since there is no earlier fork point. QA commits the QR there, nothing else. On a re-run QA first merges `development` into it and updates the QR in place.
+- **The seal** is one tag, not two: on the human's "Seal it" the PM tags the tip of the release branch (the QR commit) `<product>-vX.Y.Z`, annotated, naming the verified commit. The tag holds the code and its QR.
+- **Not good enough:** the feedback enters the flow at the role that owns it (Flow Activation above), on `development`.
+
 ### Flow Rules
 
 | Rule | Detail |
@@ -341,8 +349,10 @@ Before committing, every role **MUST verify it is on the correct branch** for th
 | **Spec** | QA Engineer (`*_QR.md` only) | `release/<product>-v<X.Y>` — the frozen spec |
 | **Spec** | PM, UI/UX, Security, Writer | `development` — spec changes reach the next line |
 | **Dev** | All dev roles | `development`; `release/<product>-v<X.Y>` only as patch line |
+| **One repo** | QA Engineer (`*_QR.md` only) | `release/<product>-v<X.Y>`, cut from the verified commit (§6, *One Repository*) |
+| **One repo** | every other role | `development` |
 
-`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`; QR commits on `development` are refused.
+`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`; QR commits on `development` are refused. In one repo the `release/*` guard applies only when a `*_PRD.md` sits at its root.
 
 ---
 

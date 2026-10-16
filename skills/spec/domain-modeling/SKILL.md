@@ -20,7 +20,7 @@ This is the *active* discipline: changing the model, not just reading it. Readin
 2. **Sharpen fuzzy words.** For an overloaded word, propose the precise term: "*account*: the tenant or the user?"
 3. **Stress-test with scenarios.** Invent the edge case that forces a boundary: two tenants, a deleted user, a retried request.
 4. **Cross-reference.** Check the other spec documents and, when a dev checkout is at hand, the code. A contradiction is surfaced, not resolved silently.
-5. **Write it down when it settles.** Update the glossary row then and there, not in a batch. A changed term ripples: find its uses with `dudes item check` and the ID search, and fix them in the same commit.
+5. **Write it down when it settles.** Update the glossary row then and there, not in a batch. A changed term ripples: find its uses with a text search of the term and its IDs, and fix them in the same commit.
 
 ## When an ADR is worth it
 

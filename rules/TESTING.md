@@ -40,6 +40,8 @@ QA Author reads each PRD section and writes the corresponding test cases. This i
 4. Commit test suite: `test(scope): write tests from PRD §X [🔹QA Engineer]`
 5. Hand off to Dev(s)
 
+**Boundaries.** A test for a length or size limit names the limit's unit (characters, bytes, runes) and includes non-ASCII input: a limit counted in bytes passes every ASCII test. The test asserts both sides of the boundary, the last accepted value and the first refused one.
+
 ### PRD-to-Test Traceability
 
 Every test file or test block references the PRD section it derives from:

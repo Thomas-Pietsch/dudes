@@ -117,8 +117,6 @@ The commands you will meet:
 | `dudes land <slice> -by <role>` | Merges an ended slice and removes its worktree, branch and spec pins |
 | `dudes help` | The rest; [`FEATURES.md`](FEATURES.md) lists every capability |
 
-A product repo that includes [`make/bridge.mk`](make/bridge.mk) gets the same loop as make goals: `make slice`, `review`, `approve`, `redo` and `land`.
-
 ## What is real today, and what is vision
 
 DUDES is early software. This is where it stands, measured rather than hoped.

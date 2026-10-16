@@ -48,13 +48,7 @@ An idea, a feature or a changed requirement enters at the PM. A bug in the code 
 
 ## Release (one repo)
 
-`rules/DUDES.md` §6 and §12 describe a spec repo and a dev repo. This repo is both, so:
-
-- `development` holds spec, tests and code.
-- The PM's last spec commit is the freeze. QA and Developer build from it. A spec change after it starts a new cycle.
-- QA (Verify) cuts `release/<product>-v<X.Y>` from the verified commit (the backlog's `R0.1` is `v0.1`) and commits the QR there, nothing else. On a re-run it first merges `development` into that branch.
-- **Seal it:** the PM tags the tip of the release branch (the QR commit) `<product>-v<X.Y.Z>`, annotated, naming the verified commit. The tag then holds the code and its QR.
-- **Not good enough:** the feedback enters the flow where the Flow section says, on `development`. QA (Verify) runs again and updates the QR in place.
+This repo is both spec and dev. The freeze, the release branch, the QR and the seal are as `rules/DUDES.md` §6 (*One Repository*) and §12 set them. Here the backlog's `R0.1` is `v0.1`.
 
 ## ✅ Definition of Done
 

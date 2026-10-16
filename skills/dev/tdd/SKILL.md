@@ -14,6 +14,6 @@ DUDES already sequences test_authoring before implementation. This skill is how 
 5. **A missing precondition fails; it does not skip.** `t.Skip` on a missing file or fixture hides the gap the test exists to show.
 6. **Assert behaviour (GIVEN/WHEN/THEN)**, not business hypotheses (willingness to pay, PMF).
 7. **Red, then green.** Write only the code that turns the test green. No speculative features, no drive-by refactors. Refactoring belongs to review.
-8. **The engine runs the gate** after you exit: the task's test command. Do not invent a test runner.
+8. **The gate is the task's test command**, run after you finish: by the engine for a worker, by the role in the role-play. Do not invent a test runner.
 
 Skills teach discipline. They do not choose the next phase.

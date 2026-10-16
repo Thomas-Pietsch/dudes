@@ -12,6 +12,6 @@ description: Keep the change inside the existing architecture and give new code 
 5. **A seam needs two adapters.** Introduce an interface only where something really varies (the real database and a test double, two providers). One adapter is a hypothetical seam: skip it.
 6. **Testable by shape:** accept dependencies instead of creating them; return results instead of mutating the caller's state.
 7. **Boundaries:** workspace containment, orchestrator-owned git, no secrets in artifacts. Do not rename instance spec files. Do not add a second PRD.
-8. **A product decision stops you.** If the design needs one, stop for `dudes decide`. Do not pick a default.
+8. **A product decision stops you.** If the design needs one, stop and ask the human, as `rules/DUDES.md` §16 asks about a requirement. Do not pick a default.
 
 Skills teach discipline. They do not choose the next phase.

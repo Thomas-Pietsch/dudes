@@ -1,3 +1,4 @@
+# PARKED (2026-10-16): the role-play does not use this file. The engine and its commands stay; nothing in the cloud world calls or advertises the bridge.
 # The bridge (F88): how the role-play reaches the engine in a dev repo that tracks dudes/ — each goal
 # is one engine command, two at most, with no logic of its own (CORE.md §13). A dev repo includes this
 # file by its path in the DUDES clone, never a copy, so its goals cannot drift:

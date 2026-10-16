@@ -70,7 +70,7 @@ It built from the spec, not from the tests: in its step it opened no test file. 
 
 ## 5. QA (Verify) writes the report
 
-It ran the suite again, cut `release/bookshelf-v0.1` from the verified commit, wrote the QR there and committed it (`rules/DUDES.md` §6 and §12: the QR goes on the release branch, nothing else does). `rules/TESTING.md` §5 sets its shape:
+It ran the suite again, cut `release/bookshelf-v0.1` from the verified commit, wrote the QR there and committed it (`rules/DUDES.md` §6, *One Repository*, and §12: the QR goes on the release branch, nothing else does). `rules/TESTING.md` §5 sets its shape:
 
 ```markdown
 **Verdict.** ✅ Pass · **Verified commit.** eb975e2 · **Command.** `make test`

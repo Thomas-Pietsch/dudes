@@ -3,7 +3,7 @@
 For the lead repo: the CEO (strategy, vision, Go/No-Go, idea intake) and the Product Visionary (market, competition, go-to-market, product-market fit). Lead work is text and judgement no test settles, and no model is trained on how a DUDES company decides (`CORE.md` §5, *Where skills earn their place*) — so the skills here carry that method. They share this background instead of repeating it:
 
 - **A decision is a commit.** It carries its role tag (`[🔹CEO]`), lands in the lead repo's documents and states its premise and what would falsify it. The decision log is derived from those commits (`make audit`), never kept by hand.
-- **The record comes first.** Before a judgement, collect what the mechanisms already know — the decision log, each product's derived item status (`dudes item board`, F70), the consistency check (`dudes item check`), the roadmap's milestones. A judgement without that record is an opinion.
+- **The record comes first.** Before a judgement, collect what the mechanisms already know — the decision log, each product's derived item status (`dudes item board`, F70), the consistency check, the roadmap's milestones. Without the engine, read the same facts from the backlog, the QRs and git; `dudes` only derives them. A judgement without that record is an opinion.
 - **Sources are primary and dated.** A market claim names its source, its date and whether it is documented or measured; a forecast names what would falsify it.
 - **The company's own** — its lab, infrastructure, company document, local conventions — lives in the instance's lead repo: what can be checked as a goal of its makefile, what needs judgement as its own `skills/`. A company skill that extends one here names it instead of copying it.
 
