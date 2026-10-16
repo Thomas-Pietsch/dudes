@@ -10,3 +10,7 @@ updates:
     directory: /docker/worker
     schedule:
       interval: weekly
+    ignore:
+      # Aider pins the Python range: aider-chat 0.86.2 requires <3.13. Lift when its pins change or Aider is dropped.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
