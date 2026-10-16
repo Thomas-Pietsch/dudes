@@ -12,8 +12,8 @@
 
 ## Now
 
-- [ ] P · `[ops]` **The public repo's first week** — public since 2026-10-15 (fresh root `2e81fa9`; the old history is in the private archive and the backup bundle in `C:\Workackup`, bench and run notes included). The repository settings are set (2026-10-16: PR review on `development` with the owner's bypass, no force-push or deletion, secret scanning with push protection, Dependabot, read-only workflow tokens). Left, each the owner's call:
-  1. `CODEOWNERS` (untracked, `* @Thomas-Pietsch`): track it as `.github/CODEOWNERS`, or delete it. With one owner it only requests his review; never require code-owner review, he cannot approve his own PRs.
+- [ ] P · `[ops]` **The public repo's first week** — public since 2026-10-15 (fresh root `2e81fa9`; the old history is in the private archive and the backup bundle in `C:\Work\backup`, bench and run notes included). The repository settings are set (2026-10-16: PR review on `development` with the owner's bypass, no force-push or deletion, secret scanning with push protection, Dependabot, read-only workflow tokens). Left, each the owner's call:
+  1. `CODEOWNERS` (untracked, `* @Thomas-Pietsch`): track it as `.github/CODEOWNERS`, or delete it. With one owner it only requests the owner's review; never require code-owner review, since an owner cannot approve their own PRs.
   2. Commit e-mail: the GitHub noreply address from now on, with "Block command line pushes that expose my email"; the 8 public commits stay as they are.
   3. The bench evidence: `TREND.md` B2/B3 and `bench/README.md` cite the notes `refs/notes/dudes/bench`, which only the private archive holds. Reword them, or export the run lines into a tracked `bench/RESULTS.md` that `make public-check` covers.
   4. Then the step back (`skills/framework/roadmap`): lane `P`'s exit check is met, so its status and the review stamp change, and lane `R` gets a Now line again.
