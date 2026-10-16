@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Thomas-Pietsch/dudes/internal/config"
 	"github.com/Thomas-Pietsch/dudes/internal/contract"
@@ -156,7 +157,11 @@ func pickFromMenu(cfg config.Config, menu []menuEntry, text string) int {
 	for _, e := range menu {
 		fmt.Fprintf(&b, "- key `%s` — %s\n", e.key, strings.TrimSpace(e.line))
 	}
-	out, err := cfg.OllamaClient().Generate(context.Background(), b.String())
+	client := cfg.OllamaClient()
+	start := time.Now()
+	out, usage, err := client.GenerateUsage(context.Background(), b.String())
+	// Metered like every worker call; no run state (nil): the pick is not a task's work.
+	recordCall(cfg, nil, ollamaUsage(client.Model(), usage, err), time.Since(start), out, err)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: intake pick: %v\n", err)
 		return 1

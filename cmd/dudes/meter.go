@@ -11,6 +11,7 @@ import (
 	"github.com/Thomas-Pietsch/dudes/internal/config"
 	"github.com/Thomas-Pietsch/dudes/internal/events"
 	"github.com/Thomas-Pietsch/dudes/internal/ollama"
+	"github.com/Thomas-Pietsch/dudes/internal/phase"
 	"github.com/Thomas-Pietsch/dudes/internal/redact"
 	"github.com/Thomas-Pietsch/dudes/internal/runstate"
 )
@@ -46,9 +47,15 @@ func ollamaUsage(model string, u ollama.Usage, err error) events.Usage {
 }
 
 // recordCall records one worker call: a worker event with u, the task and the duration; and, when
-// the call succeeded, its reply as the task's last (replyRel).
+// the call succeeded, its reply as the task's last (replyRel). Without a run (st nil) the event has
+// no run, phase or task and no reply is kept: the call is still measured.
 func recordCall(cfg config.Config, st *runstate.State, u events.Usage, took time.Duration, reply string, callErr error) {
-	u.Task, u.DurationMs = st.TaskID, took.Milliseconds()
+	var runID string
+	var ph phase.ID
+	if st != nil {
+		u.Task, runID, ph = st.TaskID, st.RunID, st.Phase
+	}
+	u.DurationMs = took.Milliseconds()
 	tokens := "no token count"
 	if u.Counted != "" {
 		tokens = fmt.Sprintf("%d prompt + %d completion tokens (%s)", u.PromptTokens, u.CompletionTokens, u.Counted)
@@ -57,10 +64,10 @@ func recordCall(cfg config.Config, st *runstate.State, u events.Usage, took time
 	if callErr != nil {
 		detail += ", failed"
 	}
-	if err := events.Append(cfg.Workspace, events.Event{RunID: st.RunID, Type: "worker", Phase: st.Phase, Detail: detail, Usage: &u}); err != nil {
+	if err := events.Append(cfg.Workspace, events.Event{RunID: runID, Type: "worker", Phase: ph, Detail: detail, Usage: &u}); err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: warning: the worker call is not recorded in full: %v\n", err)
 	}
-	if callErr != nil || strings.TrimSpace(reply) == "" {
+	if st == nil || callErr != nil || strings.TrimSpace(reply) == "" {
 		return
 	}
 	p := filepath.Join(cfg.Workspace, filepath.FromSlash(replyRel(nonzero(st.TaskID, string(st.Phase)))))

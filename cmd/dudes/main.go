@@ -1311,7 +1311,10 @@ func cmdTest(configPath string, fix bool) int {
 		return 1
 	}
 	client := cfg.OllamaClient()
-	out, err := client.Generate(context.Background(), ollama.FixFromTestPrompt(log))
+	start := time.Now()
+	out, usage, err := client.GenerateUsage(context.Background(), ollama.FixFromTestPrompt(log))
+	// Metered like every worker call; no run state (nil), so the fix never replaces a task's kept reply.
+	recordCall(cfg, nil, ollamaUsage(client.Model(), usage, err), time.Since(start), out, err)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dudes: fix worker: %v\n", err)
 		return 1
