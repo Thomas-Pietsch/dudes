@@ -15,6 +15,7 @@
 # the ports its containers publish through the bridge's gateway; the container keeps its own network.
 # Security: code in the container then controls the Docker daemon — in effect root on its host.
 # Absolute paths among the arguments are translated; one outside the repository is mounted read-only.
+# The git dir's hooks and config are mounted read-only too, so nothing in the container can plant code a host git command runs.
 set -eu
 AIDER_VERSION=0.86.2
 IMAGE=dudes-worker:aider-$AIDER_VERSION-p1 # -pN: security overrides in docker/worker/Dockerfile
@@ -87,13 +88,21 @@ if [ -n "$docker" ]; then
 	case $(uname -s) in Linux) set -- --group-add "$(stat -c %g /var/run/docker.sock)" "$@" ;; esac # the user below may use it
 fi
 
-# A worktree's .git file names its git dir by a host path: mount the common git dir and overlay the
-# .git file with one naming the daemon's path — the repository's config stays as it is.
-if [ -f "$top/.git" ]; then
-	gitdir=$(git rev-parse --absolute-git-dir)
+if gitdir=$(git rev-parse --absolute-git-dir 2>/dev/null); then
 	common=$(cd "$(git rev-parse --git-common-dir)" && pwd)
-	printf 'gitdir: %s\n' "$(dpath "$gitdir")" >"$gitdir/worker.gitfile"
-	set -- -v "$(dpath "$common"):$(dpath "$common")" -v "$(dpath "$gitdir/worker.gitfile"):$topd/.git:ro" "$@"
+	# Hooks and config are read-only: a worker's edit, or a test the gate runs, must not plant code
+	# (a hook, core.hooksPath, core.fsmonitor) that the engine's next git command runs on the host.
+	# In a worktree they are the common git dir's; config.worktree sits in the worktree's own.
+	[ -d "$common/hooks" ] || mkdir -p "$common/hooks"
+	set -- -v "$(dpath "$common/hooks"):$(dpath "$common/hooks"):ro" "$@"
+	if [ -f "$common/config" ]; then set -- -v "$(dpath "$common/config"):$(dpath "$common/config"):ro" "$@"; fi
+	if [ -f "$gitdir/config.worktree" ]; then set -- -v "$(dpath "$gitdir/config.worktree"):$(dpath "$gitdir/config.worktree"):ro" "$@"; fi
+	# A worktree's .git file names its git dir by a host path: mount the common git dir and overlay the
+	# .git file with one naming the daemon's path — the repository's config stays as it is.
+	if [ -f "$top/.git" ]; then
+		printf 'gitdir: %s\n' "$(dpath "$gitdir")" >"$gitdir/worker.gitfile"
+		set -- -v "$(dpath "$common"):$(dpath "$common")" -v "$(dpath "$gitdir/worker.gitfile"):$topd/.git:ro" "$@"
+	fi
 fi
 case $(uname -s) in Linux) set -- --user "$(id -u):$(id -g)" "$@" ;; esac # files stay the user's
 if [ -t 0 ] && [ -t 1 ]; then set -- -t "$@"; fi
