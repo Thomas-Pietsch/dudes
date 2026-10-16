@@ -20,8 +20,8 @@ This agent requires the DUDES framework. Read `<DUDES>/rules/DUDES.md` now, then
 | | |
 |---|---|
 | Product | Named by the PM in the first spec. Every role takes the name from there |
-| Repo type | Spec and dev in one repo: the spec level and the dev level of `rules/DUDES.md` §4 together. The lead level has no role: the idea and the go/no-go are the human's |
-| Spec | `spec/`, one file per type (`<PRODUCT>_PRD.md`, `_TA.md`, `_BACKLOG.md`, `_QR.md`), in the reference format of `<DUDES>/examples/sample/pm/`: requirements with SHALL and GIVEN/WHEN/THEN, IDs, `[[DOC:ID]]` references. Not at the repo root: a `*_PRD.md` there makes `hooks/commit-msg` treat the repo as a frozen spec repo |
+| Repo type | Spec and dev in one repo: the spec level and the dev level of `rules/DUDES.md` §4 together. The lead level has no role: the idea and the go/no-go are the human's. `hooks/commit-msg` reads this row to guard the release branch (§12): keep its first words |
+| Spec | `spec/`, one file per type (`<PRODUCT>_PRD.md`, `_TA.md`, `_BACKLOG.md`, `_QR.md`), in the reference format of `<DUDES>/examples/sample/pm/`: requirements with SHALL and GIVEN/WHEN/THEN, IDs, `[[DOC:ID]]` references. Not at the repo root, which is a two-repo spec repo's layout |
 | Test gate | `make test` runs every test (`rules/DUDES.md` §5 step 5). Another layer gets its own goal, named here |
 | Git | Work on `development`, except the QR. Commit locally. Never push, and never tag before the human's word |
 

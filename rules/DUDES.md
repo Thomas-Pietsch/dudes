@@ -40,7 +40,7 @@ Worker skills (`skills/<level>/<name>/SKILL.md` in the framework, `skills/<name>
 |------------------|--------|
 | CEO, Product Visionary | `research` before a decision that rests on market, competitor or regulation facts; the company audit is goals plus the CEO's judgement (`skills/lead/README.md`) |
 | QA Engineer (Author) | `tdd` |
-| Backend / Frontend Developer, Developer | `tdd`, `codebase-design` · `work-item` when building one backlog item from its pack |
+| Backend / Frontend Developer, Developer | `tdd`, `codebase-design` · `work-item` when building one backlog item (the item and the frozen sections it references are the pack) |
 | Fix Flow (any dev role) | `diagnosing-bugs` |
 | QA Engineer (Verify) | `code-review` |
 | PM, Security, Technical Writer | `writing-for-agents` |
@@ -352,7 +352,7 @@ Before committing, every role **MUST verify it is on the correct branch** for th
 | **One repo** | QA Engineer (`*_QR.md` only) | `release/<product>-v<X.Y>`, cut from the verified commit (§6, *One Repository*) |
 | **One repo** | every other role | `development` |
 
-`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`; QR commits on `development` are refused. In one repo the `release/*` guard applies only when a `*_PRD.md` sits at its root.
+`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`; QR commits on `development` are refused. The same guard holds in a one-repo product: the hook finds it by the `Repo type` row of its `AGENTS.md` ("Spec and dev in one repo", the starter's wording), since its PRD sits under `spec/`, not at the root. QA's merge of `development` into the release branch (§6) is not refused.
 
 ---
 

@@ -39,8 +39,15 @@ fi
 case "$BRANCH" in
   release/*)
     # Spec repo (a *_PRD.md at its root): the branch is the frozen spec — only QA, only the QR.
+    # One-repo product (its AGENTS.md has the starter's Repo type row): the release branch holds
+    # the QR, nothing else — the same guard, though its PRD sits under spec/, not at the root.
     # Dev repo: release/<product>-vX.Y is the patch line — every role may commit there.
-    git ls-files ':(glob)*_PRD.md' | grep -q . || exit 0
+    ONE=""
+    if ! git ls-files ':(glob)*_PRD.md' | grep -q .; then
+      TOP=$(git rev-parse --show-toplevel)
+      grep -qiE '^\|[[:space:]]*Repo type[[:space:]]*\|[[:space:]]*Spec and dev in one repo' "$TOP/AGENTS.md" 2>/dev/null || exit 0
+      ONE=1
+    fi
     case "$ROLE" in
       *"QA Engineer"*) ;; # allowed
       *)
@@ -52,6 +59,9 @@ case "$BRANCH" in
         exit 1
         ;;
     esac
+    # One repo: QA merges development into the release branch before a re-run (§6). The merge brings
+    # every file of the line, so the staged-files check does not apply to it.
+    [ -n "$ONE" ] && git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 && exit 0
     OTHER=$(git diff --cached --name-only | grep -v '_QR\.md$')
     if [ -n "$OTHER" ]; then
       echo ""

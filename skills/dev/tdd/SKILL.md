@@ -7,7 +7,7 @@ description: Turn the item's failing acceptance tests green, test first. Use in 
 
 DUDES already sequences test_authoring before implementation. This skill is how to work inside those phases.
 
-1. **The spec is the source of truth.** Read the criterion in the item pack (or the frozen PRD section). Do not invent a competing spec.
+1. **The spec is the source of truth.** Read the criterion in the item pack (the engine's, or in the role-play the backlog item and the frozen PRD section it references). Do not invent a competing spec.
 2. **Keep the test's name and file.** Each acceptance criterion has its own failing test (`TestBK001AC1` in `tests/bk001ac1_test.go`; `TestReq_<id>` without an item). Replace its body in place. The name carries the ID the engine traces.
 3. **Test behaviour through the public interface**, the way a caller uses it: run the binary, call the exported function, send the request. No mocks of internal parts, no private functions, no checking a database behind the interface's back.
 4. **Expected values come from the spec**, written as literals (the criterion's example, a worked case), never recomputed the way the code computes them. A test that cannot disagree with the code proves nothing.
