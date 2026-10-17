@@ -25,7 +25,7 @@ An idea goes in. The requirements are written and frozen first, then tests, code
 | Gates | Rules the agent follows. Opt-in git hooks (`hooks/`) enforce the commit rules | Code. The engine runs them; a model cannot argue with one |
 | You need | The IDE agent you already use. No GPU, no Docker | An Ollama host (a 24–32 GB GPU box for the code worker) and Docker for the Aider image |
 | Your code goes to | The vendor of the model behind your agent. A hosted model sees it | Your Ollama host, and nowhere else |
-| How far it is | How products are delivered with DUDES today | Early. Some local models clear the bench ladder; none has yet passed a replay of a real product's first tasks |
+| How far it is | How products are delivered with DUDES today | Early. Some local models clear the bench ladder's first three rungs; none has yet passed a replay of a real product's first tasks, and the ladder's next rungs carry that product's details |
 | Start | Copy the [starter](templates/product/) into your product repo: its `AGENTS.md` requires the rules, [`rules/DUDES.md`](rules/DUDES.md). Setup: [Claude Code](docs/CLAUDE_CODE_SETUP.md), [Cursor](docs/CURSOR_SETUP.md), [Cline](docs/CLINE_SETUP.md). First run: [the 10-minute walkthrough](docs/WALKTHROUGH.md) | `make try` below previews it, no model needed. Then [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) |
 
 **Read next:** [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md) · [the measured bench summaries, failures included](TREND.md#11-engine-workers--measured-skillsframeworkbench) · [the design](CORE.md)

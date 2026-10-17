@@ -107,7 +107,7 @@ Check it with `dudes doctor` in your repo, then `dudes run -prompt "…"`.
 
 ## What the numbers say
 
-- On the ladder, some local models of this size do small, well-specified tasks. That does not predict real product slices: no model has passed the replay.
+- On the ladder's first three rungs, some local models of this size do small, well-specified tasks. That does not predict real product slices: no model has passed the replay, and the rungs from `L4` on carry a real item's details.
 - Size is not the lever. The two larger models tried, `gemma4:31b` and `mdq100/qwen3.5-coder:35b`, stop at slice 1 like `gemma4:26b`.
 - A green gate is the worker's own judgement when the worker writes the test it must pass. That is why the bench scores against a hidden test, and why the red tests of a real item are read before the code is written.
 - Earlier trials on a real product's first slice: `deepseek-coder-v2:16b` answered `BLOCKED:`, and `mistral-small` 24B stopped after 7 tokens (its chat template: inconclusive).
