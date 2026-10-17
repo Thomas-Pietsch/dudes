@@ -104,6 +104,14 @@ func TestCommitMsgBranchRoles(t *testing.T) {
 		{"development, PM, the QR as the quality contract", "dev", "development", "X_QR.md", "docs(x): exit set of the release [🔹Product Manager]", true},
 		{"development, Backend Developer, code", "dev", "development", "main.go", "feat(x): a route [🔹Backend Developer]", true},
 		{"no role tag", "dev", "development", "main.go", "feat(x): a route", false},
+		// The subject prefix (§13): <type>(<scope>): <text>; git's own Merge and Revert subjects pass
+		{"no type prefix", "dev", "development", "main.go", "a route [🔹Backend Developer]", false},
+		{"a type without the colon", "dev", "development", "main.go", "feat a route [🔹Backend Developer]", false},
+		{"a capital type", "dev", "development", "main.go", "Feat(x): a route [🔹Backend Developer]", false},
+		{"no scope, a breaking mark", "dev", "development", "main.go", "feat!: a route [🔹Backend Developer]", true},
+		{"a merge subject", "dev", "development", "main.go", "Merge branch 'line' [🔹Developer]", true},
+		{"a revert subject", "dev", "development", "main.go", "Revert \"feat(x): a route\" [🔹Developer]", true},
+		{"a free subject in a merge in progress", "one-merge", "release/x-v1.0", "main.go", "development into the line [🔹QA Engineer]", true},
 		// One repo (the starter's AGENTS.md names it; the PRD sits under spec/, not at the root)
 		{"one repo release, QA, the QR", "one", "release/x-v1.0", "X_QR.md", "docs(qa): run 1 [🔹QA Engineer]", true},
 		{"one repo release, QA, code", "one", "release/x-v1.0", "main.go", "fix(x): a bug [🔹QA Engineer]", false},
@@ -356,16 +364,8 @@ func TestCommitMsgSpecGate(t *testing.T) {
 				git("add", f)
 			}
 			// PATH without any real dudes, then the fake in front of it
-			var keep []string
-			for _, d := range filepath.SplitList(os.Getenv("PATH")) {
-				if _, e := os.Stat(filepath.Join(d, "dudes")); e == nil {
-					continue
-				}
-				if _, e := os.Stat(filepath.Join(d, "dudes.exe")); e == nil {
-					continue
-				}
-				keep = append(keep, d)
-			}
+			keep := withoutDudes()
+			_, copied := cloneOf(t, hook)
 			called := filepath.Join(t.TempDir(), "called")
 			if c.fake != "" {
 				i := strings.LastIndex(c.fake, " ")
@@ -380,7 +380,7 @@ func TestCommitMsgSpecGate(t *testing.T) {
 			if err := os.WriteFile(msg, []byte(c.msg+"\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.Command("sh", hook, msg)
+			cmd := exec.Command("sh", copied, msg)
 			cmd.Dir = ws
 			cmd.Env = append(os.Environ(), "PATH="+strings.Join(keep, string(os.PathListSeparator)))
 			out, err := cmd.CombinedOutput()
@@ -392,6 +392,274 @@ func TestCommitMsgSpecGate(t *testing.T) {
 			}
 			if !c.ok && !(strings.Contains(string(out), "3 open consistency finding") && strings.Contains(string(out), "dudes item check")) {
 				t.Fatalf("the refusal does not name the count and the command\n%s", out)
+			}
+		})
+	}
+}
+
+// withoutDudes is PATH's directories minus any that hold a dudes, so a test places its own.
+func withoutDudes() []string {
+	var keep []string
+	for _, d := range filepath.SplitList(os.Getenv("PATH")) {
+		if _, e := os.Stat(filepath.Join(d, "dudes")); e == nil {
+			continue
+		}
+		if _, e := os.Stat(filepath.Join(d, "dudes.exe")); e == nil {
+			continue
+		}
+		keep = append(keep, d)
+	}
+	return keep
+}
+
+// cloneOf copies the hook into the hooks/ of a fresh clone and returns the clone's root and the copy,
+// so the engine the hook finds in bin/ beside it is the test's, never one built in this repo.
+func cloneOf(t *testing.T, hook string) (clone, copied string) {
+	t.Helper()
+	body, err := os.ReadFile(hook)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clone = t.TempDir()
+	copied = filepath.Join(clone, "hooks", "commit-msg")
+	if err := os.MkdirAll(filepath.Dir(copied), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(copied, body, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return clone, copied
+}
+
+// hookRepo makes a repo on branch with one commit (README.md, and AGENTS.md when agents is not empty)
+// that ran no hook. git runs a command in it and returns its output; write puts a file in its work tree.
+func hookRepo(t *testing.T, branch, agents string) (ws string, git func(args ...string) string, write func(rel, body string)) {
+	t.Helper()
+	ws = t.TempDir()
+	git = func(args ...string) string {
+		t.Helper()
+		out, err := exec.Command("git", append([]string{"-C", ws}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	write = func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(ws, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("init", "-q")
+	git("config", "user.email", "dudes@test")
+	git("config", "user.name", "dudes-test")
+	git("config", "core.hooksPath", filepath.Join(ws, "no-hooks"))
+	git("checkout", "-q", "-b", branch)
+	write("README.md", "base\n")
+	git("add", "README.md")
+	if agents != "" {
+		write("AGENTS.md", agents)
+		git("add", "AGENTS.md")
+	}
+	git("commit", "-q", "-m", "base")
+	return ws, git, write
+}
+
+// runHook runs the hook at path in ws on the message and returns its output and error.
+func runHook(t *testing.T, hook, ws, msg string, env []string) (string, error) {
+	t.Helper()
+	file := filepath.Join(t.TempDir(), "COMMIT_EDITMSG")
+	if err := os.WriteFile(file, []byte(msg+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("sh", hook, file)
+	cmd.Dir = ws
+	cmd.Env = append(os.Environ(), env...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// The required branch of commit-msg (§12): a role of the Role paths row commits on development or a
+// release/* branch, nowhere else, and the refusal names the role, the branch and §12. A repo without
+// the row, a tag naming no role of it, a merge in progress and a detached HEAD are not judged.
+func TestCommitMsgRoleBranch(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not on PATH")
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", "hooks", "commit-msg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const row = "| Role paths | `QA Engineer: spec/*_QR.md; Developer: *` |\n"
+	cases := []struct {
+		name    string
+		agents  string
+		branch  string // "" = a detached HEAD
+		file    string
+		merge   bool // a merge in progress
+		msg     string
+		ok      bool
+		mention string
+	}{
+		{"a role on a feature branch", row, "feature/x", "pkg/a.go", false, "feat(x): a route [🔹Developer]", false, "role [🔹Developer] works on development, the QR on release/*; this commit is on feature/x"},
+		{"QA on a feature branch", row, "feature/x", "spec/X_QR.md", false, "docs(x): run 1 [🔹QA Engineer]", false, "this commit is on feature/x"},
+		{"QA, the QR on release/*", row, "release/x-v1.0", "spec/X_QR.md", false, "docs(x): run 1 [🔹QA Engineer]", true, ""},
+		{"a role on development", row, "development", "pkg/a.go", false, "feat(x): a route [🔹Developer]", true, ""},
+		{"a role on the patch line", row, "release/x-v1.0", "pkg/a.go", false, "fix(x): a bug [🔹Developer]", true, ""},
+		{"no row, a feature branch", "", "feature/x", "pkg/a.go", false, "feat(x): a route [🔹Developer]", true, ""},
+		{"a tag naming no role of the row", row, "feature/x", "pkg/a.go", false, "chore(x): hooks [🔹AI-driven DevOps Engineer]", true, ""},
+		{"the human's own commit", row, "feature/x", "pkg/a.go", false, "chore(x): a fix [🔹human]", true, ""},
+		{"a merge in progress", row, "feature/x", "pkg/a.go", true, "Merge branch 'line' [🔹Developer]", true, ""},
+		{"a detached HEAD", row, "", "pkg/a.go", false, "feat(x): a route [🔹Developer]", true, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			branch := c.branch
+			if branch == "" {
+				branch = "development"
+			}
+			ws, git, write := hookRepo(t, branch, c.agents)
+			if c.branch == "" {
+				git("checkout", "-q", "--detach")
+			}
+			if c.merge {
+				write(".git/MERGE_HEAD", git("rev-parse", "HEAD")+"\n")
+			}
+			write(c.file, "change\n")
+			git("add", c.file)
+			out, err := runHook(t, hook, ws, c.msg, nil)
+			if (err == nil) != c.ok {
+				t.Fatalf("accepted=%v, want %v\n%s", err == nil, c.ok, out)
+			}
+			if !c.ok && !strings.Contains(out, "§12") {
+				t.Fatalf("the refusal does not name §12\n%s", out)
+			}
+			if c.mention != "" && !strings.Contains(out, c.mention) {
+				t.Fatalf("the refusal does not name %q\n%s", c.mention, out)
+			}
+		})
+	}
+}
+
+// The guard rows of commit-msg (§14): a role of the Role paths row stages no change to the `Role paths`
+// and `Repo type` rows of AGENTS.md nor to the .dudes-framework pin; the human does. The row the hook
+// applies is the index's, so an unstaged edit cannot disarm it, and a commit that drops the row is
+// held to the one HEAD has.
+func TestCommitMsgGuardRows(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not on PATH")
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", "hooks", "commit-msg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		product = "| Product | x |\n"
+		typeRow = "| Repo type | Spec and dev in one repo: the spec level and the dev level |\n"
+		row     = "| Role paths | `QA Engineer: *_test.*; PM, Developer: AGENTS.md; Developer: *` |\n"
+		dev     = "feat(x): a route [🔹Developer]"
+	)
+	cases := []struct {
+		name     string
+		staged   string // AGENTS.md as staged; "" = not staged
+		unstaged string // AGENTS.md as edited in the work tree and left out of the index; "" = not edited
+		pin      bool   // the .dudes-framework pin is staged
+		files    []string
+		msg      string
+		ok       bool
+		mention  string
+	}{
+		{"a role changes the Role paths row", product + typeRow + "| Role paths | `Developer: *` |\n", "", false, nil, dev, false, "the Role paths row"},
+		{"the human changes the Role paths row", product + typeRow + "| Role paths | `Developer: *` |\n", "", false, nil, "chore(x): the guard [🔹human]", true, ""},
+		{"a role changes another row", "| Product | y |\n" + typeRow + row, "", false, nil, dev, true, ""},
+		{"a role changes the Repo type row", product + "| Repo type | Spec and dev apart |\n" + row, "", false, nil, dev, false, "the Repo type row"},
+		{"a role drops the Role paths row", product + typeRow, "", false, nil, dev, false, "the Role paths row"},
+		{"a role stages the framework pin", "", "", true, nil, dev, false, ".dudes-framework"},
+		{"the human stages the framework pin", "", "", true, nil, "chore(x): the pin [🔹human]", true, ""},
+		{"a tag naming no role changes the row", product + typeRow + "| Role paths | `Developer: *` |\n", "", false, nil, "chore(x): hooks [🔹AI-driven DevOps Engineer]", true, ""},
+		{"an unstaged edit does not disarm the row", "", product + typeRow, false, []string{"pkg/a_test.go"}, dev, false, "pkg/a_test.go  (owner: QA Engineer)"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ws, git, write := hookRepo(t, "development", product+typeRow+row)
+			if c.staged != "" {
+				write("AGENTS.md", c.staged)
+				git("add", "AGENTS.md")
+			}
+			if c.pin {
+				git("update-index", "--add", "--cacheinfo", "160000,"+git("rev-parse", "HEAD")+",.dudes-framework")
+			}
+			for _, f := range c.files {
+				write(f, "change\n")
+				git("add", f)
+			}
+			if c.unstaged != "" {
+				write("AGENTS.md", c.unstaged)
+			}
+			out, err := runHook(t, hook, ws, c.msg, nil)
+			if (err == nil) != c.ok {
+				t.Fatalf("accepted=%v, want %v\n%s", err == nil, c.ok, out)
+			}
+			if c.mention != "" && !strings.Contains(out, c.mention) {
+				t.Fatalf("the refusal does not name %q\n%s", c.mention, out)
+			}
+			if !c.ok && (c.staged != "" || c.pin) && !strings.Contains(out, "[🔹human]") {
+				t.Fatalf("the refusal does not say the human changes them\n%s", out)
+			}
+		})
+	}
+}
+
+// The spec gate finds its engine (F78): the dudes in bin/ of the clone the hook runs from, with no
+// dudes on PATH at all; a clone without one and a PATH without one pass without running anything.
+func TestCommitMsgSpecGateClone(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not on PATH")
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", "hooks", "commit-msg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		bin  string // the engine's file name in the clone's bin/; "" = none
+		fake string // the fake's output line, then its exit code after a space
+		ok   bool
+		ran  bool
+	}{
+		{"the clone's engine finds, refuses", "dudes", "consistency: 3 finding(s) 1", false, true},
+		{"the clone's engine finds none, accepts", "dudes", "consistency: 0 finding(s) 0", true, true},
+		{"the clone's dudes.exe finds, refuses", "dudes.exe", "consistency: 3 finding(s) 1", false, true},
+		{"no engine in the clone or on PATH", "", "", true, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ws, git, write := hookRepo(t, "development", "")
+			write(".dudes/profile.json", "{}\n")
+			write("spec/X_PRD.md", "change\n")
+			git("add", "spec/X_PRD.md")
+			clone, copied := cloneOf(t, hook)
+			called := filepath.Join(t.TempDir(), "called")
+			if c.bin != "" {
+				i := strings.LastIndex(c.fake, " ")
+				script := "#!/bin/sh\necho called > '" + filepath.ToSlash(called) + "'\necho '" + c.fake[:i] + "'\nexit " + c.fake[i+1:] + "\n"
+				if err := os.MkdirAll(filepath.Join(clone, "bin"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(clone, "bin", c.bin), []byte(script), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			out, err := runHook(t, copied, ws, "docs(x): a requirement [🔹PM & Software Architect]", []string{"PATH=" + strings.Join(withoutDudes(), string(os.PathListSeparator))})
+			if (err == nil) != c.ok {
+				t.Fatalf("accepted=%v, want %v\n%s", err == nil, c.ok, out)
+			}
+			if _, e := os.Stat(called); (e == nil) != c.ran {
+				t.Fatalf("check ran=%v, want %v\n%s", e == nil, c.ran, out)
 			}
 		})
 	}

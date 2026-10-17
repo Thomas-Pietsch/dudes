@@ -1,6 +1,6 @@
 #!/bin/sh
 # DUDES Framework — commit-msg hook
-# Enforces: role tag (§13), work-item trailer while an item is bound (F77), role paths (§14), consistency gate on a PM spec commit (§6), branch-role matrix (§12)
+# Enforces: role tag and subject prefix (§13), work-item trailer while an item is bound (F77), required branch, guard rows and role paths (§12, §14), consistency gate on a PM spec commit (§6), branch-role matrix (§12)
 # Install: make hooks (core.hooksPath)
 
 # Match bytes, not characters: under git the hook runs with LC_CTYPE=C.UTF-8, where MSYS sed
@@ -22,6 +22,26 @@ if [ -z "$ROLE" ]; then
   exit 1
 fi
 
+# ── 1a. Subject prefix (§13) ────────────────────────────────────────
+# The first line reads `<type>(<scope>): <text>`; the scope and a `!` before the colon are optional.
+# A merge in progress and a subject git wrote itself (`Merge `, `Revert `) are not judged.
+SUBJECT=$(printf '%s\n' "$MSG" | sed -n '/[^[:space:]]/{p;q;}')
+if ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  case "$SUBJECT" in
+    "Merge "*|"Revert "*) ;;
+    *)
+      if ! printf '%s\n' "$SUBJECT" | grep -Eq '^[a-z]+(\([^)]*\))?!?: .'; then
+        echo ""
+        echo "❌ DUDES §13: the subject does not start with <type>(<scope>): <description>."
+        echo "   Got: $SUBJECT"
+        echo "   Required format: <type>(<scope>): <desc> [🔹Role]"
+        echo ""
+        exit 1
+      fi
+      ;;
+  esac
+fi
+
 # ── 1b. Work-item trailer (F77) ─────────────────────────────────────
 # While a work item is bound (`# item: <ID>` in .dudes/writable), every commit names it.
 SCOPE="$(git rev-parse --show-toplevel)/.dudes/writable"
@@ -38,7 +58,9 @@ fi
 # ── 1c. Role paths (§14) ────────────────────────────────────────────
 # The product's AGENTS.md may carry a `Role paths` row: `Role: globs; Role, Role: globs; …`. The first
 # entry whose glob matches a staged path owns it; a role tag that names one of the row's roles may
-# commit only the paths its role owns. A tag that names none (DevOps, human, engine), a merge in
+# commit only the paths its role owns, and only on development or a release/* branch (§12). The
+# row is the human's, like the `Repo type` row and the framework pin (`.dudes-framework`): a role of
+# the row stages no change to them (§14). A tag that names none (DevOps, human, engine), a merge in
 # progress and a repo without the row keep today's behaviour. `*` also matches `/`.
 owns() { # $1 = a comma list of roles, $2 = the tag: succeeds when the tag names one of them
   printf '%s\n' "$1" | tr ',' '\n' | {
@@ -49,7 +71,11 @@ owns() { # $1 = a comma list of roles, $2 = the tag: succeeds when the tag names
     exit 1
   }
 }
-PATHROW=$(sed -n 's/^|[[:space:]]*Role paths[[:space:]]*|\(.*\)|[[:space:]]*$/\1/p' "$(git rev-parse --show-toplevel)/AGENTS.md" 2>/dev/null | head -1 | tr -d '`')
+pathrow() { sed -n 's/^|[[:space:]]*Role paths[[:space:]]*|\(.*\)|[[:space:]]*$/\1/p' | head -1 | tr -d '`'; }
+# The row comes from the index, so an unstaged edit cannot disarm it; a commit that drops the row
+# is held to the row HEAD has.
+PATHROW=$(git show :AGENTS.md 2>/dev/null | pathrow)
+[ -n "$PATHROW" ] || PATHROW=$(git show HEAD:AGENTS.md 2>/dev/null | pathrow)
 if [ -n "$PATHROW" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
   set -f
   ENTRIES=$(printf '%s\n' "$PATHROW" | tr ';' '\n' | grep ':')
@@ -60,6 +86,38 @@ if [ -n "$PATHROW" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; 
 $ENTRIES
 EOF2
   if [ -n "$NAMED" ]; then
+    # Required branch (§12): a role of the row works on development; the QR is QA's, on release/*.
+    # A detached HEAD has no branch to judge.
+    case "$BRANCH" in
+      ""|development|release/*) ;;
+      *)
+        echo ""
+        echo "❌ DUDES §12: role $ROLE works on development, the QR on release/*; this commit is on $BRANCH."
+        echo "   Fix: git checkout development (release/<product>-v<X.Y> for the QR), then commit."
+        echo ""
+        exit 1
+        ;;
+    esac
+    # Guard rows (§14): the human changes them.
+    GUARD=""
+    for r in "Role paths" "Repo type"; do
+      if git diff --cached --no-color --no-ext-diff --no-renames -U0 -- ':(top)AGENTS.md' | grep -Eq "^[-+]\|[[:space:]]*$r[[:space:]]*\|"; then
+        GUARD="$GUARD   AGENTS.md: the $r row
+"
+      fi
+    done
+    if git -c core.quotepath=off diff --cached --no-renames --name-only | grep -qx '\.dudes-framework'; then
+      GUARD="$GUARD   .dudes-framework (the framework pin)
+"
+    fi
+    if [ -n "$GUARD" ]; then
+      echo ""
+      echo "❌ DUDES §14: role $ROLE does not change the guard rows; the human ([🔹human]) does:"
+      printf '%s' "$GUARD"
+      echo "   Fix: unstage them and ask the human to commit them."
+      echo ""
+      exit 1
+    fi
     BAD=""
     STAGED=$(git -c core.quotepath=off diff --cached --no-renames --name-only)
     while IFS= read -r p; do
@@ -93,18 +151,24 @@ EOF2
 fi
 
 # ── 1d. Consistency gate on the spec (§6) ───────────────────────────
-# A PM commit that stages a spec document (Markdown, not a QR) runs `dudes item check` when a `dudes`
-# is on PATH and the repo has the profile the check reads (.dudes/profile.json). Zero findings is the
-# bar: any finding refuses the commit. Without `dudes` (the role-play world) or without the profile
-# nothing runs and the commit passes; the rule in rules/DUDES.md holds by discipline. The check reads
-# the work tree, so unstaged edits count. A merge in progress is not judged.
+# A PM commit that stages a spec document (Markdown, not a QR) runs `dudes item check` when an engine
+# is found and the repo has the profile the check reads (.dudes/profile.json). The engine is the one
+# in bin/ of the clone this hook runs from (core.hooksPath points at its hooks/), else a `dudes` on
+# PATH. Zero findings is the bar: any finding refuses the commit. Without an engine (the role-play
+# world) or without the profile nothing runs and the commit passes; the rule in rules/DUDES.md holds
+# by discipline. The check reads the work tree, so unstaged edits count. A merge in progress is not
+# judged.
 case "$ROLE" in
   *PM*)
     TOP=$(git rev-parse --show-toplevel)
-    if [ -f "$TOP/.dudes/profile.json" ] && command -v dudes >/dev/null 2>&1 \
+    HOOKS=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+    DUDES="$HOOKS/../bin/dudes"
+    [ -x "$DUDES" ] || DUDES="$DUDES.exe"
+    [ -x "$DUDES" ] || DUDES=$(command -v dudes 2>/dev/null)
+    if [ -n "$DUDES" ] && [ -f "$TOP/.dudes/profile.json" ] \
        && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 \
        && git -c core.quotepath=off diff --cached --no-renames --name-only | grep '\.md$' | grep -qv '_QR\.md$'; then
-      FOUND=$( (cd "$TOP" && dudes item check 2>/dev/null) | sed -n 's/^consistency: \([0-9][0-9]*\) finding.*/\1/p' | tail -1)
+      FOUND=$( (cd "$TOP" && "$DUDES" item check 2>/dev/null) | sed -n 's/^consistency: \([0-9][0-9]*\) finding.*/\1/p' | tail -1)
       if [ -n "$FOUND" ] && [ "$FOUND" -gt 0 ]; then
         echo ""
         echo "❌ DUDES §6: the spec has $FOUND open consistency finding(s); the PM commits spec documents with none."
