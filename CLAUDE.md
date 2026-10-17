@@ -1,1 +1,1 @@
-IMPORTANT: Ensure you’ve thoroughly reviewed the [AGENTS.md](AGENTS.md) file before beginning any work.
+This file is read by Claude Code in this folder and in every folder below it. At the workspace root the entry is `AGENTS.md` (the AI-driven DevOps Engineer): read it before any work. In a repo below this folder, that repo's own `AGENTS.md` is the entry and this line does not apply.
