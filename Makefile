@@ -13,7 +13,7 @@ ARGS ?=
 
 .PHONY: help setup tools config hooks build test vet ci version doctor bench clean \
         conventions now todo-check roadmap-check public-check trend-check test-ids audit license-scan vuln-scan worker-image \
-        shell bench-models linux
+        shell bench-models bench-smoke linux
 
 help: ## List the goals
 	@awk 'BEGIN{FS=":.*## "} /^##@ /{printf "\n%s\n", substr($$0, 5)} /^[a-zA-Z0-9_-]+:.*## /{printf "  %-13s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -62,6 +62,9 @@ bench: build ## Hermetic stub lifecycle → .dudes/bench/last.json
 
 bench-models: build ## Model bench ladder (F82): MODELS="tag …" OLLAMA=http://host:11434 [LEVELS= REPS= STEPS= NOTES=0] → git notes dudes/bench; MODELS=reference checks a level
 	@BIN=$(BIN) sh scripts/bench-models.sh
+
+bench-smoke: build ## Model smoke before a series (F82): one real worker step on one level; react= in the result line says how the model reacted (edit:n = it answers, none/cut/blocked/err = it does not): MODELS="tag" OLLAMA=http://host:11434 LEVELS=<level> [THINK=on|none NUM_PREDICT=<n> NUM_CTX=<n> TEMPERATURE=<n>|default] → no git note
+	@REPS=1 STEPS=1 NOTES=0 BIN=$(BIN) sh scripts/bench-models.sh
 
 clean: ## Remove the built binary
 	rm -f bin/dudes bin/dudes.exe

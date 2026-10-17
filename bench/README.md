@@ -5,11 +5,15 @@ Frozen micro-agent tasks of rising size. Each one runs through the real engine: 
 To run it on your own hardware and post the result: [Your 27B in 10 minutes](../docs/LOCAL_LLM_GUIDE.md). Terms used below: an *instance* is one company's use of DUDES, with its own repositories (`CORE.md` §5); an *instance trial* is a run of the engine on a real product's work items; a *slice* is one part of a work item, with its own tasks and gate; a *TA* is a spec set's technical-architecture document; an *item pack* is the context the engine builds for one work item (`dudes item pack`).
 
 ```sh
+make bench-smoke MODELS=qwen3.8:27b OLLAMA=http://<model host>:11434 LEVELS=L1   # first: one worker step, how the model reacted (react=)
+make bench-smoke MODELS=… OLLAMA=… LEVELS=L1 THINK=on NUM_PREDICT=32768 NUM_CTX=65536 TEMPERATURE=default   # the same with other settings of the model
 make bench-models MODELS="qwen3.8:27b gemma4:26b" OLLAMA=http://<model host>:11434
 make bench-models MODELS=qwen3.8:27b OLLAMA=… LEVELS=L1 REPS=1 STEPS=3 KEEP=1   # one quick run, workspace kept
-make bench-models MODELS=qwen3.8:27b OLLAMA=… LEVELS=L1 REPS=1 NOTES=0           # smoke run, no git note
+make bench-models MODELS=qwen3.8:27b OLLAMA=… LEVELS=L1 REPS=1 NOTES=0           # one run, no git note
 make bench-models WORKER=pi MODELS=… OLLAMA=…                                    # Pi as the code worker (sh scripts/worker.sh --build-pi <gate image> first)
 ```
+
+**Smoke first.** A series costs hours, and a model that does not answer the worker's request wastes it: it echoes one of Aider's canned turns, reasons until the reply cap, or answers in another shape. `make bench-smoke` runs one step of one run (`REPS=1 STEPS=1 NOTES=0`) and the gate once on what the model wrote; the `react=` field of its line says how the model reacted ([Results](#results)). Start a series when it reads `edit:<n>` with n covering the task's files. Otherwise change one setting (`THINK`, `NUM_PREDICT`, `NUM_CTX`, `TEMPERATURE`) and smoke again, or drop the model. Run the series with the settings the smoke passed with. The smoke's outcome is no result.
 
 | Level | Item | What the worker must do |
 |---|---|---|
@@ -30,15 +34,19 @@ L4 and up are external levels: an item in slices, red first, built from a sealed
 3. One step for test_authoring, which writes one failing test file per criterion. The level's `testdata/base/` is then copied over again and committed when anything changed: a criterion whose approved test the level gives keeps it (L1–L3 give none).
 4. Steps until `dudes status -json` counts every contract task done (`tasks_done` = `tasks_total`), with up to `STEPS` steps per task. A task that waits for a decision (`approval`, F66) is approved with `dudes decide`, since a bench has no human; the log says so, and a pause before a task is not a step.
 
-The gate is `go test ./...` (or the level's `TEST_COMMAND`), run in `golang:1.26-bookworm` (or the level's `GATE_IMAGE`) through `test_launch`. The worker runs in the worker image with the whole edit format (`EDIT_FORMAT=diff` for search/replace blocks; the result line names it), `num_ctx` 32768 (or the level's `NUM_CTX`), `num_predict` 12288 and thinking off.
+The gate is `go test ./...` (or the level's `TEST_COMMAND`), run in `golang:1.26-bookworm` (or the level's `GATE_IMAGE`) through `test_launch`. The worker runs in the worker image with the whole edit format (`EDIT_FORMAT=diff` for search/replace blocks; the result line names it), `num_ctx` 32768 (`NUM_CTX`), `num_predict` 12288 (`NUM_PREDICT`), temperature 0 (`TEMPERATURE`) and thinking off (`THINK`). The result line names thinking, reply cap and temperature. They are Aider's settings, written to the generated `aider-models.yml`; Pi keeps its own (its line says `n/a`).
 
 **Level settings:** a level that needs more declares it in `<level>/level.env`, one `KEY=value` per line. The script reads the file without sourcing it and refuses unknown keys. L1–L3 have none.
 - `GATE_IMAGE`: the gate's toolchain image (default `golang:1.26-bookworm`). The hidden test runs in it too.
 - `GATE_DOCKER=1`: the gate gets the host's Docker (`scripts/worker.sh --docker`), for tests that start containers.
-- `STEPS`: the level's steps per task (default the `STEPS` setting).
+- `STEPS`: the level's steps per task (default 3).
 - `TEST_COMMAND`: the full suite, words split on blanks, no quotes (default `go test ./...`). It is the engine's `test_command`, so the gate of a task without its own `test` — the last one — runs it. The final rerun adds `-v` after `go test`.
 - `NUM_CTX`: the worker model's context window (default 32768) — a level whose task packs need more says so here, and the result is read with it.
+- `THINK` (`on`, `off` or `none`, default off) and `NUM_PREDICT` (default 12288): the worker model's thinking and reply cap. `on` also sets `streaming: false` (the pinned litellm's streaming parser can drop answer text that arrives beside a thinking key). `none` writes no thinking setting, for a model without the thinking capability: Ollama answers HTTP 400 to `think: true` there.
+- `TEMPERATURE` (default unset): Aider sends temperature 0 unless told otherwise, which overrides every model tag's own default (a vendor's 0.7 or 1.0, say), so the vendor's sampling is a setting of a series, not of a Modelfile. Unset writes nothing (temperature 0); `default` lets the tag's own temperature apply; a number such as `0.7` sets it.
 - `BASE_REPO`, `BASE_REV`, `SPEC_<root>`: an external level's fixture (below).
+
+**Precedence.** `STEPS`, `NUM_CTX`, `THINK`, `NUM_PREDICT` and `TEMPERATURE` are also variables, and for these five the order is the same: the variable on the command line, then the level's `level.env`, then the default. A variable set to the default's own value still beats the level's, so `make bench-smoke` runs one step on a level that declares `STEPS=3`, and `NUM_CTX=32768` overrides a level's 65536. The result line names `think=`, `predict=` and `temp=` but not the context: read that from your command or the level. Every other key comes from `level.env` alone.
 
 **Outcomes:**
 - `pass`: every task done, the last task's gate (the full suite) green **and** the level's hidden test green. `<level>/testdata/verify_test.go` (or the package `<level>/testdata/verify/`, with its own test data) is checked against the spec; the worker never sees it, and it is copied into the run's `verify/` only after the gate.
@@ -65,10 +73,20 @@ Lines written before these two fields existed lack them. `NOTES=0` skips the not
 A line has this shape (`<…>` stands for a value, `[+…]` for further steps):
 
 ```text
-<date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> worker=<aider|pi> host=<model host> edit=<whole|diff|n/a> [stop=<rule>]
+<date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> worker=<aider|pi> host=<model host> edit=<whole|diff|n/a> think=<on|off|none|n/a> predict=<n|n/a> temp=<0|default|n|n/a> react=<class>[+…] [stop=<rule>]
 ```
 
 `worker=` names the code worker (`WORKER=aider|pi`, default `aider`); lines written before it existed are Aider's. `edit=` is Aider's edit format, `n/a` for Pi. A Pi run that a stop rule ended carries `stop=no-tool-call` (a run in which Pi ran and made no tool call) or `stop=scope-or-gate-violation` (the engine discarded a path out of scope). `tokens=` are the engine's worker events of the run, for both workers: `dudes status -json` sums them (`worker_calls`, `prompt_tokens`, `completion_tokens`) and the bench takes each step's change. Aider's calls include its reflection calls, in Aider's rounded count (0.1k under 10k, 1k above); Pi's are the sums of the assistant messages' usage in its JSON events. The first step's count includes the test authoring that runs before it.
+
+`think=`, `predict=` and `temp=` are the Aider worker's thinking, reply cap and temperature in that run (`THINK`, `NUM_PREDICT`, `TEMPERATURE`; `temp=0` when none was set), `n/a` for Pi. `react=` is how the model reacted to the worker's request: one class per step, in the order the steps ran, joined with `+` like `tokens=` (`n/a` for Pi, whose tool calls and stop rules are `stop=`). Lines written before these fields lack them. The classes:
+
+- `edit:<n>`: Aider applied edits to n different files.
+- `none`: the code worker produced no file changes — the reply held no file listing (an echoed canned turn, reasoning prose, a question).
+- `cut`: the reply hit a token limit (`num_predict` or `num_ctx`); Aider applies nothing from a cut reply.
+- `blocked`: the worker escalated (`BLOCKED:` or `CONTRACT:`, F74).
+- `err`: any other worker error (a timeout, Aider's exit status), or an output none of the classes explains.
+
+A reaction is no outcome: a run can react `edit:6` and fail its gate. It is what `make bench-smoke` reads.
 
 - Read your own runs with `git log --notes=dudes/bench`. The notes live in your clone only; this repository publishes no run lines.
 - The same lines are in `.dudes/bench-models/<stamp>-results.txt`. The logs and the Aider chat of every step sit beside them. That directory is gitignored: raw logs stay out of the repository.

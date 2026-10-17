@@ -23,13 +23,17 @@ ollama pull qwen3.8:27b         # on the model host: any tag works, these two ar
 make bench-models MODELS=qwen3.8:27b OLLAMA=http://<host>:11434 LEVELS=L1 REPS=1
 ```
 
+This section's "smoke bench" is one whole run of level L1. Do not confuse it with `make bench-smoke`, the first step before a series: one worker step on one level, whose `react=` field says whether the model answers the worker's request at all ([`bench/README.md`](../bench/README.md)). The stub lifecycle `make bench` runs no model and is neither.
+
 `OLLAMA` must be an address the worker container can reach. Inside the container `127.0.0.1` is the container itself: name the model host by its address on your network, and let Ollama listen there (`OLLAMA_HOST=0.0.0.0` on the model host).
 
 This runs level L1 ("Slugs": one package from one acceptance criterion) once. It prints one result line, then a headline per model:
 
 ```text
-<date> L1 <model> run=1/1 <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> host=<your Ollama URL> edit=whole
+<date> L1 <model> run=1/1 <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> worker=aider host=<your Ollama URL> edit=whole think=off predict=12288 temp=0 react=<class>[+…]
 ```
+
+`think=`, `predict=` and `temp=` are the worker's thinking, reply cap and temperature in that run. `react=` is how the model reacted to the worker's request, one class per step: `edit:<n>` (it answered with files), `none`, `cut`, `blocked` or `err`.
 
 | Outcome | Means |
 |---|---|

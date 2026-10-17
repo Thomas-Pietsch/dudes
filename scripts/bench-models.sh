@@ -4,9 +4,19 @@
 # level's toolchain image, gate feedback. One run = a fresh git repository from bench/workspace +
 # bench/<level>, stepped to the end of the level's contract.
 #   MODELS="qwen3.8:27b gemma4:26b" OLLAMA=http://host:11434 sh scripts/bench-models.sh
-#   LEVELS (L1 L2 L3)  REPS (3)  STEPS (3, steps per task)  BIN (the engine)  KEEP=1 keeps runs
+#   LEVELS (L1 L2 L3)  REPS (3)  STEPS (3, steps per task)  NUM_CTX (32768)  BIN (the engine)  KEEP=1 keeps runs
 #   NOTES=0 skips the git note (smoke runs)
+#   make bench-smoke runs this with REPS=1 STEPS=1 NOTES=0: one real worker step on the level, then its gate.
+#   The model comes first (skills/framework/bench): react= says how it reacted to the worker's request, and a
+#   series runs only for a model whose step read edit:<n>, with the settings it passed with.
 #   EDIT_FORMAT (whole) Aider's edit format — whole or diff; the result line names it
+#   THINK (off) on|off|none, NUM_PREDICT (12288), NUM_CTX and TEMPERATURE: the Aider worker's thinking, reply cap,
+#   context window and sampling, written to the generated aider-models.yml. THINK=none writes no think: line, for a
+#   model without the thinking capability (Ollama answers HTTP 400 to think: true there); THINK=on also writes
+#   streaming: false (see prepare). TEMPERATURE unset writes nothing: Aider then sends temperature 0, which
+#   overrides every tag's own default (a vendor's 0.7 or 1.0, say). default writes use_temperature: false, so the
+#   tag's own applies; a number writes use_temperature: <number>. A vendor's sampling is a setting of a series, not
+#   of a Modelfile. The result line names think=, predict= and temp= (0 when unset); Pi keeps its own (see prepare): n/a.
 #   WORKER (aider) the code worker — aider or pi; the result line names it (worker=). pi runs in the Pi
 #   image on the level's GATE_IMAGE (worker.sh --build-pi first), through the same engine, scope and gate:
 #   the fixture's .dudes/dudes.json gets a pi block with its launch, the copy of the level's contract names
@@ -19,7 +29,12 @@
 # Level settings: <level dir>/level.env, KEY=value lines (read, not sourced; none needed for L1–L3):
 #   GATE_IMAGE (golang:1.26-bookworm) the gate's toolchain image · GATE_DOCKER=1 the gate gets the
 #   host's Docker (worker.sh --docker) · STEPS the level's steps per task · TEST_COMMAND (go test ./...)
-#   the full suite, words split on blanks · NUM_CTX (32768) the worker model's context window.
+#   the full suite, words split on blanks · NUM_CTX (32768) the worker model's context window · THINK,
+#   NUM_PREDICT and TEMPERATURE as above.
+# Precedence, once, for STEPS, THINK, NUM_PREDICT, NUM_CTX and TEMPERATURE: the environment (set on the make
+#   line), else the level's level.env, else the default. The environment is read before any default fills it
+#   (STEPS_ENV and its kin), so a value equal to the default still beats the level's: bench-smoke's STEPS=1 holds
+#   on a level that declares STEPS=3. The other level settings come from level.env alone.
 # External level: a LEVELS entry may be the path of a level directory outside bench/ (an instance
 # owns it, with its specs and code); its name is the directory's basename. It has the layout of
 # bench/<level> plus dudes/ (profile.json, specset.json → the fixture's .dudes/) and, in level.env,
@@ -46,19 +61,41 @@
 # those notes only then), final = at the end — from the last note when HEAD carries one, else from
 # one verbose rerun of the suite in the gate image (logged; a build failure = 0). best > final: a
 # later pass made the tree worse. ac=none: no green gate at all.
+# Then think=, predict= and temp= (the Aider worker's; n/a for pi) and react=<step>+<step>+…, one class per step in
+# the order the steps ran, like tokens=: how the model reacted to the worker's request, from the step's engine
+# output and Aider's chat (<run log>.step<N>.md). edit:<n> Aider applied n files · none the code worker
+# produced no file changes (the reply held no file listing) · cut the reply hit a token limit, Aider applies
+# nothing from it (raise num_ctx or num_predict) · blocked the worker escalated · err any other worker error,
+# or output none of these explains. react=n/a for pi. A reaction is no outcome: a run can react edit:<n> and fail.
+# The classifier (reaction) depends on three prints, so a change to one is a change to it: the engine's "worker
+# escalated (" and "code worker produced no file changes", and Aider's "> Applied edit to" (the cut-off message
+# is pinned by the engine's tests).
 # Every run appends its line to the git note refs/notes/dudes/bench on the framework's HEAD; logs
 # land in .dudes/bench-models/. skills/framework/bench reads the notes into TREND.md §1.1.
 set -euf # -f: TEST_COMMAND is split into words, never globbed
 cd "$(dirname "$0")/.."
 : "${MODELS:?MODELS=\"<ollama tag> …\" or MODELS=reference required}"
 [ "$MODELS" = reference ] && OLLAMA=${OLLAMA:-} || : "${OLLAMA:?OLLAMA=http://<model host>:11434 required}"
+# What the make line set for the five settings (Precedence above), read before any default fills it: unset and
+# "set to the default" must stay apart. The defaults sit where each setting is read (chosen).
+STEPS_ENV=${STEPS:-} THINK_ENV=${THINK:-} NUM_PREDICT_ENV=${NUM_PREDICT:-} NUM_CTX_ENV=${NUM_CTX:-} TEMPERATURE_ENV=${TEMPERATURE:-}
 LEVELS=${LEVELS:-L1 L2 L3}
 REPS=${REPS:-3}
-STEPS=${STEPS:-3}
 NOTES=${NOTES:-1}
 EDIT_FORMAT=${EDIT_FORMAT:-whole} # Aider's edit format for every worker (whole: the file again; diff: search/replace blocks)
 WORKER=${WORKER:-aider}
 case $WORKER in aider | pi) ;; *) echo "bench-models: WORKER=$WORKER — aider or pi" >&2; exit 2 ;; esac
+case $THINK_ENV in '' | on | off | none) ;; *) echo "bench-models: THINK=$THINK_ENV — on, off or none" >&2; exit 2 ;; esac
+number() { # name, value → refuses a value that is no number above 0 (empty: not set)
+	case $2 in *[!0-9]* | 0*) echo "bench-models: $1=$2 — a number above 0" >&2; exit 2 ;; esac
+}
+number STEPS "$STEPS_ENV"
+number NUM_PREDICT "$NUM_PREDICT_ENV"
+number NUM_CTX "$NUM_CTX_ENV"
+checktemp() { # value → refuses what is neither empty (not set), default nor a number such as 0, 0.7 or 1.2
+	case $1 in '' | default) ;; *) printf '%s\n' "$1" | grep -Eq '^(0|[1-9][0-9]*)(\.[0-9]+)?$' || { echo "bench-models: TEMPERATURE=$1 — a number such as 0.7, or default" >&2; exit 2; } ;; esac
+}
+checktemp "$TEMPERATURE_ENV"
 BIN=${BIN:-bin/dudes$(go env GOEXE)} # make passes its own
 mpath() { cygpath -m "$1" 2>/dev/null || printf '%s\n' "$1"; } # a path the engine and Aider read
 root=$(mpath "$(pwd)")
@@ -77,11 +114,15 @@ setting() { # level dir, key, default → the level's value (level.env), else th
 	printf '%s\n' "${v:-$3}"
 }
 
+chosen() { # level dir, key, the make line's value, default → the make line's value, else the level's, else the default
+	if [ -n "$3" ]; then printf '%s\n' "$3"; else setting "$1" "$2" "$4"; fi
+}
+
 for L in $LEVELS; do # a typo in a level's settings must not pass silently
 	D=$(ldir "$L")
 	[ -f "$D/contract.json" ] || { echo "bench-models: no level bench/$L or $L/contract.json" >&2; exit 2; }
 	if [ -f "$D/level.env" ]; then
-		bad=$(tr -d '\r' <"$D/level.env" | grep -Ev '^(#.*|[[:space:]]*|(GATE_IMAGE|GATE_DOCKER|STEPS|TEST_COMMAND|NUM_CTX|BASE_REPO|BASE_REV)=.*|SPEC_[A-Za-z0-9_-]+=[^@]+@[^@]+)$' || true)
+		bad=$(tr -d '\r' <"$D/level.env" | grep -Ev '^(#.*|[[:space:]]*|(GATE_IMAGE|GATE_DOCKER|STEPS|TEST_COMMAND|NUM_CTX|BASE_REPO|BASE_REV)=.*|THINK=(on|off|none)|NUM_PREDICT=[1-9][0-9]*|TEMPERATURE=(default|(0|[1-9][0-9]*)(\.[0-9]+)?)|SPEC_[A-Za-z0-9_-]+=[^@]+@[^@]+)$' || true)
 		[ -z "$bad" ] || { printf 'bench-models: %s/level.env: unknown setting(s):\n%s\n' "$D" "$bad" >&2; exit 2; }
 		case $(setting "$D" TEST_COMMAND "") in *\"* | *\\*) echo "bench-models: $D/level.env: TEST_COMMAND takes no quotes or backslashes" >&2; exit 2 ;; esac
 	fi
@@ -244,15 +285,20 @@ prepare() { # level dir, temp dir, model → the run's fixture at <temp>/repo, s
 	git -C "$ws" add -A
 	git -C "$ws" commit -qm "bench fixture $name"
 	w=$(mpath "$ws")
-	numctx=$(setting "$1" NUM_CTX 32768)
-	cat >"$ws/.dudes/aider-models.yml" <<EOF
-- name: ollama_chat/$3
-  edit_format: $EDIT_FORMAT
-  extra_params:
-    think: false
-    num_ctx: $numctx
-    num_predict: 12288
-EOF
+	numctx=$(chosen "$1" NUM_CTX "$NUM_CTX_ENV" 32768)
+	think=$(chosen "$1" THINK "$THINK_ENV" off) predict=$(chosen "$1" NUM_PREDICT "$NUM_PREDICT_ENV" 12288)
+	temp=$(chosen "$1" TEMPERATURE "$TEMPERATURE_ENV" "") # the line names these three
+	{
+		echo "- name: ollama_chat/$3"
+		echo "  edit_format: $EDIT_FORMAT"
+		# litellm 1.81.10's streaming parser drops a chunk's content when the chunk also carries a thinking key, so a thinking model streamed through Aider can lose answer text: THINK=on turns streaming off (off and none leave it as it is)
+		[ "$think" != on ] || echo "  streaming: false"
+		case $temp in '') ;; default) echo "  use_temperature: false" ;; *) echo "  use_temperature: $temp" ;; esac # unset: Aider's own, temperature 0
+		echo "  extra_params:"
+		case $think in on) echo "    think: true" ;; off) echo "    think: false" ;; esac # none: no line, the model has no thinking capability
+		echo "    num_ctx: $numctx"
+		echo "    num_predict: $predict"
+	} >"$ws/.dudes/aider-models.yml"
 	piblock=
 	if [ $WORKER = pi ]; then
 		# Pi reaches Ollama through its OpenAI-compatible /v1 endpoint, which sets neither num_ctx nor
@@ -308,13 +354,32 @@ finish() { # → the run's temp dir removed, or kept with KEEP=1 (logged)
 	[ "${KEEP:-}" = 1 ] && echo "kept: $tmp" >>"$log" || rm -rf "$tmp"
 }
 
+reaction() { # a step's engine output, its Aider chat (may be missing) → how the model reacted to the request:
+	# blocked (the worker escalated), cut (the reply hit a token limit: Aider applies nothing from it), err (any
+	# other worker error), edit:<n> (Aider applied n files), none (the code worker produced no file changes).
+	# Output none of these explains is err too: a smoke must not pass on what it does not understand.
+	if grep -q '^worker escalated (' "$1"; then
+		echo blocked
+	elif grep -Eq "the model's reply was cut off|has hit a token limit" "$1"; then
+		echo cut
+	elif grep -q '^dudes: aider' "$1"; then
+		echo err
+	elif applied=$(grep '^> Applied edit to ' "$2" 2>/dev/null | sort -u | grep -c .); then # grep -c fails on 0
+		echo "edit:$applied" # n different files: a reflection call may apply one again
+	elif grep -q '^code worker produced no file changes' "$1"; then
+		echo none
+	else
+		echo err
+	fi
+}
+
 run() { # level model rep → one result line
 	L=$1 M=$2 r=$3
 	D=$(ldir "$L") name=$(basename "$L")
-	budget=$(setting "$D" STEPS "$STEPS")
+	budget=$(chosen "$D" STEPS "$STEPS_ENV" 3)
 	log=$logs/$stamp-$name-$(echo "$M" | tr ':/' '__')-$r.log
 	prepare "$D" "$(mktemp -d "${TMPDIR:-/tmp}/dudes-bench-XXXXXX")" "$M"
-	out= i=0 n=0 seen=0 tok= stop= piran=0 picalls=0 sentp=0 sentc=0 t0=$(date +%s) # sentp, sentc: the run's tokens read so far
+	out= i=0 n=0 seen=0 tok= react= stop= piran=0 picalls=0 sentp=0 sentc=0 t0=$(date +%s) # sentp, sentc: the run's tokens read so far
 	wimage=$(worker_image "$D")
 	stepout=$(mktemp)
 	while :; do
@@ -365,6 +430,7 @@ run() { # level model rep → one result line
 		if [ -f "$h" ]; then
 			mv "$h" "$log.step$i.md"
 		fi
+		[ $WORKER = pi ] || react=${react:+$react+}$(reaction "$stepout" "$log.step$i.md") # Pi has no Aider chat to read
 	done
 	if [ $WORKER = pi ] && [ -z "$stop" ] && [ $piran = 1 ] && [ $picalls = 0 ]; then
 		stop="no tool call" out=fail # Pi ran in this run and never used a tool
@@ -381,7 +447,9 @@ run() { # level model rep → one result line
 	rm -f "$stepout"
 	min=$((($(date +%s) - t0 + 30) / 60))
 	finish
-	echo "$day $name $M run=$r/$REPS $out steps=$i tasks=$did/$total ac=$ac min=$min tokens=${tok:-none} engine=$engine image=$wimage worker=$WORKER host=$OLLAMA edit=$([ $WORKER = pi ] && echo n/a || echo "$EDIT_FORMAT")${stop:+ stop=$(echo "$stop" | tr ' ' '-')}"
+	# Pi keeps its own edit format, thinking, reply cap and temperature (its config, the server's tag) and has no Aider chat to read a reaction from
+	if [ $WORKER = pi ]; then editf=n/a think=n/a predict=n/a temp=n/a react=n/a; else editf=$EDIT_FORMAT temp=${temp:-0} react=${react:-none}; fi
+	echo "$day $name $M run=$r/$REPS $out steps=$i tasks=$did/$total ac=$ac min=$min tokens=${tok:-none} engine=$engine image=$wimage worker=$WORKER host=$OLLAMA edit=$editf think=$think predict=$predict temp=$temp react=$react${stop:+ stop=$(echo "$stop" | tr ' ' '-')}"
 }
 
 reference() { # level → one line: the level checked against its reference solution, no worker

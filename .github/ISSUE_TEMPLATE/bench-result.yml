@@ -13,10 +13,10 @@ body:
         **A result line has this shape** (the bench prints one per run):
 
         ```text
-        <date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> host=<label> edit=<whole|diff>
+        <date> <level> <model> run=<n>/<reps> <outcome> steps=<n> tasks=<done>/<total> ac=<best>/<final> min=<n> tokens=<sent>/<received>[+…] engine=<commit> image=<worker image> worker=<aider|pi> host=<label> edit=<whole|diff|n/a> think=<on|off|none|n/a> predict=<n|n/a> temp=<0|default|n|n/a> react=<class>[+…] [stop=<rule>]
         ```
 
-        `outcome` is `pass`, `weak`, `fail` or `blocked`. The levels and the fields are explained in
+        `outcome` is `pass`, `weak`, `fail` or `blocked`; `react` has one class per step (`edit:<n>`, `none`, `cut`, `blocked`, `err`). The levels and the fields are explained in
         [bench/README.md](https://github.com/Thomas-Pietsch/dudes/blob/HEAD/bench/README.md).
   - type: textarea
     id: result-lines
@@ -66,7 +66,7 @@ body:
     id: settings
     attributes:
       label: Settings you changed
-      description: LEVELS, REPS, STEPS, EDIT_FORMAT, or a level's NUM_CTX. Leave empty for the defaults.
+      description: LEVELS, REPS, STEPS, EDIT_FORMAT, THINK, NUM_PREDICT, NUM_CTX or TEMPERATURE. Leave empty for the defaults.
   - type: textarea
     id: notes
     attributes:
