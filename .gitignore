@@ -11,6 +11,8 @@ nul
 *.txt
 *.py
 *.js
+# A ladder level's committed inputs are text files (bench/L4: the notes file its golden file is rendered from)
+!bench/*/testdata/**/*.txt
 
 # Go engine
 /bin/

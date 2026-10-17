@@ -20,8 +20,9 @@ make bench-models WORKER=pi MODELS=… OLLAMA=…                               
 | L1 | `BL-001` Slugs | One package file and the real test of one acceptance criterion |
 | L2 | `BL-002` Version order | A package whose behaviour lives in a TA reference (`ALG-01`). The worker reads it through the item pack. Three criteria |
 | L3 | `BL-003` Latest release | Several constraints in one task across two packages: a new package (`release`, TA `ALG-02`) on top of an existing one (`semver`, committed from `L3/testdata/base/`) that gains a function and must keep its behaviour. The hidden test replays L2's cases |
+| L4 | `BL-004` Release notes | One item in a real item's shape: the acceptance tests are given, approved and read-only (`L4/testdata/base/tests/`), one implementation task, the writable scope the new package alone. Its details are the ones every model has failed on in a real item (`TREND.md` §1.1): a release-notes file rendered from the committed `testdata/notes.txt` (a new package `notes`, TA `ALG-03`) that must equal the committed `testdata/release-notes.md` byte for byte, an error that names the input and the line (`ERR_NOTES: <name>:<line>:`), a contract across packages (`notes` orders and classifies through `semver` and `release`, given read-only from `L4/testdata/base/`), and the old packages kept, outside the writable scope. The hidden test checks the trailing newline, a `v` prefix kept as given, a candidate's placement, an empty notes file, the imports of `notes`, and replays L2's and L3's cases. The first ladder level with a reference solution (`L4/testdata/reference/`) |
 
-L4 and up are external levels: an item in slices, red first, built from a sealed real item in the instance that owns it ([External levels](#external-levels) below; the first ran 2026-10-14, `TREND.md` §1.1). An instance trial (ended after its fifth slice, `TREND.md` §1.1) shows what it must hold: a cross-toolchain slice and a measure of whether a failed pass leaves the tree worse. A level adds its own TA section and release to the shared spec set, so the packs of the levels before it stay unchanged.
+From L4 up the rungs are the bench product's items in a real item's shape: approved read-only tests, a reference solution, a hidden test. A rung counts once its reference check is green and at least one configuration passes it 2 of 3 while another fails it; a rung every configuration passes or none does measures nothing and is reworked before the next rung. Replay levels of real items are external levels, named after the item they replay and kept in the instance that owns it ([External levels](#external-levels) below; the first ran 2026-10-14, `TREND.md` §1.1): the hard comparison, not rungs. An instance trial (ended after its fifth slice, `TREND.md` §1.1) shows what such a level must hold: a cross-toolchain slice and a measure of whether a failed pass leaves the tree worse. A level adds its own TA section and release to the shared spec set, so the packs of the levels before it stay unchanged.
 
 **External levels.** A level built from a real product lives in the instance that owns its specs and code, never here. Name its directory in `LEVELS` (an absolute path; `make bench-models … LEVELS=C:/Coding/<instance>/bench/<level>`). Its name in result lines and logs is the directory's basename. See [External levels](#external-levels).
 
@@ -31,12 +32,12 @@ L4 and up are external levels: an item in slices, red first, built from a sealed
 
 1. `dudes init`: item-bound, so the run starts at test_authoring.
 2. `freeze`.
-3. One step for test_authoring, which writes one failing test file per criterion. The level's `testdata/base/` is then copied over again and committed when anything changed: a criterion whose approved test the level gives keeps it (L1–L3 give none).
+3. One step for test_authoring, which writes one failing test file per criterion. The level's `testdata/base/` is then copied over again and committed when anything changed: a criterion whose approved test the level gives keeps it (L1–L3 give none; L4 gives all three of its item).
 4. Steps until `dudes status -json` counts every contract task done (`tasks_done` = `tasks_total`), with up to `STEPS` steps per task. A task that waits for a decision (`approval`, F66) is approved with `dudes decide`, since a bench has no human; the log says so, and a pause before a task is not a step.
 
 The gate is `go test ./...` (or the level's `TEST_COMMAND`), run in `golang:1.26-bookworm` (or the level's `GATE_IMAGE`) through `test_launch`. The worker runs in the worker image with the whole edit format (`EDIT_FORMAT=diff` for search/replace blocks; the result line names it), `num_ctx` 32768 (`NUM_CTX`), `num_predict` 12288 (`NUM_PREDICT`), temperature 0 (`TEMPERATURE`) and thinking off (`THINK`). The result line names thinking, reply cap and temperature. They are Aider's settings, written to the generated `aider-models.yml`; Pi keeps its own (its line says `n/a`).
 
-**Level settings:** a level that needs more declares it in `<level>/level.env`, one `KEY=value` per line. The script reads the file without sourcing it and refuses unknown keys. L1–L3 have none.
+**Level settings:** a level that needs more declares it in `<level>/level.env`, one `KEY=value` per line. The script reads the file without sourcing it and refuses unknown keys. L1–L4 have none.
 - `GATE_IMAGE`: the gate's toolchain image (default `golang:1.26-bookworm`). The hidden test runs in it too.
 - `GATE_DOCKER=1`: the gate gets the host's Docker (`scripts/worker.sh --docker`), for tests that start containers.
 - `STEPS`: the level's steps per task (default 3).
@@ -54,7 +55,7 @@ The gate is `go test ./...` (or the level's `TEST_COMMAND`), run in `golang:1.26
 - `blocked`: the worker escalated.
 - `fail`: a task used up its steps, or the last task's gate was a slice rather than the full suite.
 
-For L1–L3 (an author-tests task, then one implementation task) this is the same as before: the run ends at the first green gate.
+For L1–L3 (an author-tests task, then one implementation task) and L4 (one implementation task against the given tests) this is the same as before: the run ends at the first green gate.
 
 **Headline per model:** the highest level it passes in at least 2 of 3 runs.
 
@@ -108,7 +109,7 @@ Relative paths start at the level directory as it sits in its repository's main 
 make bench-models MODELS=reference LEVELS=C:/Coding/<instance>/bench/<level>
 ```
 
-`MODELS=reference` runs no worker and needs no model host. Per level it builds the fixture through test_authoring, as a run does. It then runs the full suite in the gate image twice: on the level's base alone, which must be red, so the level is not trivially green; and with `testdata/reference/` overlaid and committed, which must be green with no acceptance test skipped. Last, it runs the hidden test, which must be green. One line per level, `<level> reference pass|fail base=red suite=green hidden=green ac=<green acceptance tests> min=…`, with the log under `.dudes/bench-models/<day>-<level>-reference.log`. There is no git note and no headline. A level without `testdata/reference/` reports `reference none`.
+`MODELS=reference` runs no worker and needs no model host. L4 is the first ladder level with a reference solution: `make bench-models MODELS=reference LEVELS=L4`. Per level it builds the fixture through test_authoring, as a run does. It then runs the full suite in the gate image twice: on the level's base alone, which must be red, so the level is not trivially green; and with `testdata/reference/` overlaid and committed, which must be green with no acceptance test skipped. Last, it runs the hidden test, which must be green. One line per level, `<level> reference pass|fail base=red suite=green hidden=green ac=<green acceptance tests> min=…`, with the log under `.dudes/bench-models/<day>-<level>-reference.log`. There is no git note and no headline. A level without `testdata/reference/` reports `reference none`.
 
 ## Changing the ladder
 

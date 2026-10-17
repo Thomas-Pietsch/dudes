@@ -1,0 +1,5 @@
+v1.9.0 Slugs from titles
+v1.10.0-rc.1 Version order, candidate build
+v1.10.0 Version order
+v1.9.0 Latest release from tags
+1.8.0 First release

@@ -53,6 +53,23 @@
 **References.** [[PRD:AC-REL-01]] [[TA:§4]] [[TA:ALG-02]] [[TA:ALG-01]]
 **DoD.** AC-REL-01 green.
 
+### R0.3 — Ladder L4
+
+#### BL-004 · Release notes
+**Release.** R0.3 · **Status.** derived from QR
+**Story.** As a release manager I get a release-notes file from tagged notes, the same bytes every time.
+
+**Functional requirements**
+- FR-1 Package `notes` per [[TA:§5]] implements [[TA:ALG-03.1..6]] on top of `semver` ([[TA:ALG-01]], [[TA:§3]]) and `release` ([[TA:ALG-02]], [[TA:§4]]); both stay as they are. The committed `testdata/notes.txt` renders to the committed `testdata/release-notes.md`.
+
+**Acceptance criteria**
+- AC-1 GIVEN `testdata/notes.txt`, WHEN `notes.Parse` reads it and `notes.Render` renders the result, THEN the output equals `testdata/release-notes.md` byte for byte.
+- AC-2 GIVEN an input named `notes.txt` with the lines `v1.0.0 First` and `1.x.0 Broken`, WHEN `notes.Parse` runs, THEN it returns an error starting with `ERR_NOTES: notes.txt:2:`.
+- AC-3 GIVEN the notes `1.2.0 Patch`, `v1.10.0 Minor` and `v1.9.3 Fix` in that order, WHEN `notes.Render` runs, THEN the headings follow as `## v1.10.0`, `## v1.9.3`, `## 1.2.0` and the file holds the line `Latest release: v1.10.0`.
+
+**References.** [[PRD:AC-NOTES-01]] [[TA:§5]] [[TA:ALG-03]] [[TA:ALG-01]] [[TA:ALG-02]] [[TA:§3]] [[TA:§4]]
+**DoD.** AC-NOTES-01 green.
+
 ## 6. Global Definition of Done
 
 1. `go test ./...` green; standard library only.

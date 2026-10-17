@@ -21,3 +21,9 @@ A tiny Go library the model bench builds, one work item per ladder level. Standa
 | ID | Criterion |
 |---|---|
 | AC-REL-01 | GIVEN a repository's tags, WHEN the latest release is asked for, THEN the answer follows [[TA:ALG-02]]. |
+
+### F4 Release notes
+
+| ID | Criterion |
+|---|---|
+| AC-NOTES-01 | GIVEN a notes file of tags and short texts, WHEN the release notes are rendered, THEN the file follows [[TA:ALG-03]] byte for byte. |

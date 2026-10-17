@@ -1,0 +1,80 @@
+{
+  "id": "bl-004",
+  "product": "bench",
+  "item": "BL-004",
+  "sources": [
+    {
+      "id": "backlog",
+      "root": "workspace",
+      "path": "BENCH_BACKLOG.md",
+      "section": "BL-004"
+    },
+    {
+      "id": "prd",
+      "root": "workspace",
+      "path": "BENCH_PRD.md",
+      "section": "AC-NOTES-01"
+    },
+    {
+      "id": "ta",
+      "root": "workspace",
+      "path": "BENCH_TA.md",
+      "section": "§5 ALG-03.1..6 ALG-01 §3 ALG-02 §4 ALG-03"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "bl-004-ac-1",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-1 GIVEN `testdata/notes.txt`, WHEN `notes.Parse` reads it and `notes.Render` renders the result, THEN the output equals `testdata/release-notes.md` byte for byte."
+    },
+    {
+      "id": "bl-004-ac-2",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-2 GIVEN an input named `notes.txt` with the lines `v1.0.0 First` and `1.x.0 Broken`, WHEN `notes.Parse` runs, THEN it returns an error starting with `ERR_NOTES: notes.txt:2:`."
+    },
+    {
+      "id": "bl-004-ac-3",
+      "source": "backlog",
+      "kind": "behavior",
+      "text": "AC-3 GIVEN the notes `1.2.0 Patch`, `v1.10.0 Minor` and `v1.9.3 Fix` in that order, WHEN `notes.Render` runs, THEN the headings follow as `## v1.10.0`, `## v1.9.3`, `## 1.2.0` and the file holds the line `Latest release: v1.10.0`."
+    }
+  ],
+  "constraints": [
+    "Standard library only.",
+    "Bench fixture: L4 of the model bench ladder (F82), one item in a real item's shape with a real item's details: the acceptance tests are given, approved and read-only; a release-notes file rendered from the committed `testdata/notes.txt` must equal the committed `testdata/release-notes.md` byte for byte; an error names the input and the line; `notes` orders and classifies through `semver` and `release` (a contract across packages); the old packages stay as they are.",
+    "`semver` (ALG-01, with `IsCandidate`) and `release` (ALG-02) exist and pass their contracts; `notes` uses them and changes neither. `tests/` holds the approved acceptance tests and `testdata/` the committed input and golden file: all read-only, outside the writable scope.",
+    "`go test` runs a package in its own directory: from `tests/` the committed files are `../testdata/notes.txt` and `../testdata/release-notes.md`."
+  ],
+  "writable": [
+    "notes/*",
+    "!tests/*",
+    "!semver/*",
+    "!release/*",
+    "!testdata/*"
+  ],
+  "tasks": [
+    {
+      "id": "implement",
+      "phase": "implementation",
+      "title": "BL-004, package `notes` (`bench/notes`): `type Note struct{ Tag, Text string }`, `Parse(name string, r io.Reader) ([]Note, error)` and `Render(notes []Note) (string, error)` per TA ALG-03.1 to ALG-03.6, ordering and classifying through `semver` (`Parse`, `Compare`, `IsCandidate`) and `release` (`Latest`). The acceptance tests `tests/bl004ac1_test.go`, `tests/bl004ac2_test.go` and `tests/bl004ac3_test.go` are written and read-only; `semver`, `release` and `testdata/` are given read-only and stay as they are. Standard library only.",
+      "worker": "aider",
+      "approval": "none",
+      "tools": [
+        "semver/semver.go",
+        "release/release.go",
+        "testdata/notes.txt",
+        "testdata/release-notes.md"
+      ],
+      "writable": [
+        "notes/*",
+        "!tests/*",
+        "!semver/*",
+        "!release/*",
+        "!testdata/*"
+      ]
+    }
+  ]
+}
