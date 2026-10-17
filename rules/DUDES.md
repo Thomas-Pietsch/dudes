@@ -39,11 +39,13 @@ Worker skills (`skills/<level>/<name>/SKILL.md` in the framework, `skills/<name>
 | Role / situation | Skills |
 |------------------|--------|
 | CEO, Product Visionary | `research` before a decision that rests on market, competitor or regulation facts; the company audit is goals plus the CEO's judgement (`skills/lead/README.md`) |
+| CEO | `scope-fit` at idea intake, before any product strategy · `challenge` before a strategy decision is committed |
 | QA Engineer (Author) | `tdd` |
 | Backend / Frontend Developer, Developer | `tdd`, `codebase-design` · `work-item` when building one backlog item (the item and the frozen sections it references are the pack) |
 | Fix Flow (any dev role) | `diagnosing-bugs` |
 | QA Engineer (Verify) | `code-review` |
 | PM, Security, Technical Writer | `writing-for-agents` |
+| PM | `backlog-item` when writing or changing a work item · `requirements-review` before the freeze, after the consistency sweep (§6) |
 | PM, Architect, Security introducing or changing a domain term or a hard-to-reverse decision | `domain-modeling` · `prototype` when a state model or workflow needs pushing through cases before the freeze |
 | UI/UX; PM researching interaction changes | `user-centered-design` for research, flows, Hi-Fi and variants; `writing-for-agents` for artifact-only edits |
 | Any role writing an artifact the engine must extract | `delimited-output` |
