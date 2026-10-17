@@ -234,7 +234,7 @@ The full product cycle spans multiple repos in a fixed sequence. Each cycle can 
 | 6 | Spec | QA commits `*_QR.md` on release branch | `release/*` |
 | 7 | — | **Human Gate:** "Seal it" → PM tags `<product>-vX.Y.Z` on the release branch, dev repos tag the verified commit with the same name → DONE · "Not good enough" → back to step 3 | — |
 
-The QR has two parts, two owners, two branches: the PM shapes its contract rows (the release exit sets, the test matrix with its IDs, each row planned) on `development` before the freeze, and QA (Verify) writes its verdict rows (results, the verified commit, releasable or not) on `release/*` (`skills/spec/quality-report`).
+The QR has two parts, two owners, two branches: the PM shapes its contract rows on `development` before the freeze: the release exit sets (the QR rows a milestone needs green), the test matrix with its IDs, each row planned; QA (Verify) writes its verdict rows (results, the verified commit, releasable or not) on `release/*` (`skills/spec/quality-report`).
 
 **Traceability is git alone — no reference file.** Dev→Spec: the release branch is the frozen spec; its fork point is the freeze, and only QA commits there (`hooks/commit-msg`), so nothing but the QR changes after it. Spec changes during a cycle go to `development` and reach the next line. Spec→Dev: `*_QR.md` on the release branch names the verified dev commit = evidence of delivery; each cycle adds a QR commit, so git history shows quality progression. Seal: the same tag name in spec and dev repos. Release is sealed **only by the human**.
 
@@ -360,7 +360,7 @@ Before committing, every role **MUST verify it is on the correct branch** for th
 | **One repo** | QA Engineer (`*_QR.md` only) | `release/<product>-v<X.Y>`, cut from the verified commit (§6, *One Repository*) |
 | **One repo** | every other role | `development` |
 
-`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`. The QR is the one file two roles write: the PM's contract rows go on `development` before the freeze, QA's verdict rows on `release/*`, and a QA commit of the QR on `development` is refused. The same guard holds in a one-repo product: the hook finds it by the `Repo type` row of its `AGENTS.md` ("Spec and dev in one repo", the starter's wording), since its PRD sits under `spec/`, not at the root. QA's merge of `development` into the release branch (§6) is not refused.
+`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`. The QR is the one file two roles write: the PM's contract rows go on `development` before the freeze, QA's verdict rows on `release/*`, and a QA commit of the QR on `development` is refused. The same guard holds in a one-repo product: the hook finds it by the `Repo type` row of its `AGENTS.md` ("Spec and dev in one repo", the starter's wording), since its PRD sits under `spec/`, not at the root. QA's merge of `development` into the release branch (§6) is not refused. For a role named by the `Role paths` row of the product's `AGENTS.md` the hook also refuses a commit on any branch but `development` and `release/*` (a detached HEAD, a merge in progress and a repo without the row are not judged).
 
 ---
 
@@ -372,6 +372,8 @@ Before committing, every role **MUST verify it is on the correct branch** for th
 
 Enables `git log --grep='🔹<Role>'` for audit trails.
 
+`hooks/commit-msg` refuses a commit without the role tag and one whose first line does not start with `<type>(<scope>): ` (the scope is optional; git's own `Merge ` and `Revert ` subjects and a merge in progress pass), so `git log` and `make audit` read the type and scope of every commit.
+
 ---
 
 ## 14. File-Type Boundary Guard
@@ -380,7 +382,7 @@ When a work item is bound, `hooks/pre-commit` enforces its writable paths (`.dud
 
 Outside domain → **stop, hand off to correct role, continue.**
 
-A product whose `AGENTS.md` has a `Role paths` row (the starter does) gets it enforced: `hooks/commit-msg` refuses a commit whose staged paths belong to another role than its tag, naming the path and its owner. A merge, a tag that names no role of the row (DevOps, human, engine) and a repo without the row are not checked.
+A product whose `AGENTS.md` has a `Role paths` row (the starter does) gets it enforced: `hooks/commit-msg` refuses a commit whose staged paths belong to another role than its tag, naming the path and its owner. A merge, a tag that names no role of the row (DevOps, human, engine) and a repo without the row are not checked. For a role the row names, the hook also refuses a staged change to the `Role paths` or `Repo type` row of `AGENTS.md` or to the `.dudes-framework` pin: only the human (`[🔹human]`) changes them, since a role that edits its own boundary has none. The hook applies the row the index holds (HEAD's when the commit drops it), so an unstaged edit or deleting the row in the same commit does not disarm it.
 
 ---
 
@@ -430,7 +432,7 @@ Never create per-feature spec files. Pattern: `[PRODUCT_NAME]_[TYPE].md` — one
 | Speculative code/rules | YAGNI |
 | Duplicating definitions | DRY — reference the source |
 | Commit without role tag | Always append `[🔹Role]` |
-| Committing QR on `development` in spec repo | QR goes on `release/*` — always verify branch first |
+| Committing QA's verdict rows of the QR on `development` | The verdict goes on `release/*`; the PM's contract rows are the one QR change on `development` — always verify branch first |
 | Implementing against the spec repo's `development` | Read the frozen spec on `release/<product>-v<X.Y>` |
 | Change notes in a spec ("Propagation …", "changed on …") | Specs state the current truth; the why goes in the commit message (`hooks/pre-commit` refuses new `> **Propagation` blocks) |
 | No completion token | Always emit ✅/⏸/❌ |

@@ -1,6 +1,6 @@
 ---
 name: quality-report
-description: Write the QR in its two parts, the contract rows before the code and the verdict rows after the run. Every row names its requirement or scenario ID, a row turns green only with a test ID, the verified commit and the run reference, and the file states the current run only. Use when the PM shapes the QR before the freeze or QA (Verify) writes the verdict.
+description: Write the QR in its two parts, the contract rows before the code and the verdict rows after the run. Every row names its requirement or scenario ID, a row turns green only with a test ID, the verified commit and the command that ran it, and the file states the current run only. Use when the PM shapes the QR before the freeze or QA (Verify) writes the verdict.
 ---
 
 # Quality report
@@ -13,16 +13,16 @@ The QR exists before the code, as the executable QA backlog: what the release mu
 
 | Part | Holds | Written by | On |
 |------|-------|------------|----|
-| Contract | the release exit sets, the test matrix with its IDs, each row planned | the PM | `development`, before the freeze |
+| Contract | the release exit sets (the QR rows a milestone needs green), the test matrix with its IDs, each row planned | the PM | `development`, before the freeze |
 | Verdict | the results, the verified commit, releasable or not | QA (Verify) | `release/*` |
 
-`hooks/commit-msg` splits them by branch: it refuses QA's staged QR on `development` and keeps `release/*` to QA and the QR (`rules/DUDES.md` §12). No hook tells the parts apart inside the file; the review does. A contract row changed after the freeze is a new freeze, never an edit by QA.
+`hooks/commit-msg` splits them by branch: it refuses QA's staged QR on `development` and keeps a spec repo's and a one-repo product's `release/*` to QA and the QR (`rules/DUDES.md` §12). No hook tells the parts apart inside the file; the review does. A contract row changed after the freeze is a new freeze, never an edit by QA.
 
 ## A row
 
 - **It names its ID:** the requirement or scenario it verifies, as its owner document defines it. A row with no ID verifies nothing the spec asked for. The shape is `examples/sample/pm/BOOKSHELF_QR.md`: ID, row, wave, status.
-- **It exists before its code,** planned. A requirement with no row is a gap the consistency sweep finds.
-- **It turns green only with three things:** the test ID that ran and the run reference, in the row, and the verified commit, in the verdict. Without them the row is a claim and stays red.
+- **It exists before its code,** planned. A DoD ID with no row is a finding of the sweep; a requirement no DoD names is the PM's reading.
+- **It turns green only with three things:** the test ID that ran and the command that ran it, in the row, and the verified commit, in the verdict. Without them the row is a claim and stays red.
 
 ## The status ladder
 
@@ -33,7 +33,7 @@ The QR exists before the code, as the executable QA backlog: what the release mu
 | 🟢 | The test passes, with its evidence |
 | ⚠️ | Blocked: the row names its owner and the condition that unblocks it |
 
-The PM writes ⬜; QA writes the rest. A blocked row reads `⚠️ <owner>: <unblock condition>`; one without an owner is a finding. The marks are the instance profile's (`examples/sample/profile.json`); the derived item status reads them (`backlog-item`).
+The PM writes ⬜ and QA the rest, so the one who plans a row never marks it passed. A blocked row reads `⚠️ <owner>: <unblock condition>`, so the human at the gate sees who unblocks it; one without an owner is a finding of the QR's reader, no hook checks it. The marks are the instance profile's (`examples/sample/profile.json`); the derived item status reads them (`backlog-item`).
 
 ## One verdict per version
 

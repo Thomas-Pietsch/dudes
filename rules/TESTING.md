@@ -122,7 +122,7 @@ These are the QA protocol's gate requirements, not a new automatic Go validator.
 ### Output
 
 Per-view pass/fail matrix documented in `*_QR.md` §E2E-Visual:
-- View name, Viewport tested, State tested, Hard-gate result (✅/🔴), Human-flag notes (if any)
+- View name, Viewport tested, State tested, Hard-gate result (🟢/🔴), Human-flag notes (if any)
 - Journey/scenario ID, mode, spec/code revision, design reference, baseline/checkpoint, linked functional result, and rationale for any accepted baseline change
 
 
@@ -140,7 +140,7 @@ Per-view pass/fail matrix documented in `*_QR.md` §E2E-Visual:
 2. Run the full test suite: unit, integration, E2E
 3. For each PRD section: record pass/fail against its corresponding tests
 4. If tests fail: hand back to responsible dev role with failure details → dev fixes → QA Verify re-runs
-5. All tests pass → generate `*_QR.md` → commit on spec repo release branch
+5. All tests pass → write the verdict rows of the `*_QR.md` and commit on the release branch
 
 ### PRD Section Coverage Matrix
 
@@ -150,7 +150,7 @@ The `*_QR.md` must include:
 
 | PRD Section | Tests Written (QA Author) | Tests Passing (QA Verify) | Status |
 |-------------|--------------------------|--------------------------|--------|
-| §X.Y | count | count | ✅/🔴 |
+| §X.Y | count | count | ⬜/🟢/🔴/⚠️ (`skills/spec/quality-report`) |
 
 Every PRD section with testable behaviour must have a row. Missing rows = incomplete QA.
 

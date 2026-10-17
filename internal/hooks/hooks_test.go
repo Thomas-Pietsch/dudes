@@ -75,7 +75,7 @@ func TestPreCommitScope(t *testing.T) {
 
 // The branch-role matrix of commit-msg (F78, DUDES §12): a spec repo's release branch takes only
 // the QA Engineer and only the QR; a dev repo's release branch is the patch line, open to every
-// role; development refuses a QR commit. The first instance's QA runs hit the spec-repo rule on a
+// role; development refuses QA's QR commit. The first instance's QA runs hit the spec-repo rule on a
 // dev repo, and the role-play committed code fixes as QA Engineer to get past it, until the hook
 // was fixed — checked by hand then, by nothing since.
 func TestCommitMsgBranchRoles(t *testing.T) {
