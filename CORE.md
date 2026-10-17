@@ -556,7 +556,7 @@ Few toggles, no free-form flows: a fixed contract keeps the gates strong and kee
 Every instance repo is driven through its makefile. The makefile documents itself; no skill explains a procedure a goal can run.
 
 - **Self-documented:** each goal carries a `## <what it does>` comment; `make help` lists them. That list is the only how-to an agent gets.
-- **Fixed names** where the repo has the job: `help` (always), `build`, `test`, `ci`, `version`, `release`. Further goals (role goals such as `backend` or `web`, pipeline stages) are the instance's.
+- **Fixed names** where the repo has the job: `help` (always), `build`, `test`, `check`, `ci`, `version`, `release`. `check` is the product's gate (format check, static checks, tests); `ci` is the framework's own gate and the name a CI pipeline uses. Further goals (role goals such as `backend` or `web`, pipeline stages) are the instance's.
 - **Selected per phase:** a phase recipe names the goals its worker may run; the engine passes only their `make help` lines (§2.4). The descriptions stay in the makefile, the selection in the recipe.
 - **A missing goal stops the gate** with a clear message. The worker never improvises the command.
 - **The test gate is a goal:** without a configured command the engine runs `make test` when the makefile documents it.

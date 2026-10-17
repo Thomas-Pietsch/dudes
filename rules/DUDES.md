@@ -43,9 +43,9 @@ Worker skills (`skills/<level>/<name>/SKILL.md` in the framework, `skills/<name>
 | QA Engineer (Author) | `tdd` |
 | Backend / Frontend Developer, Developer | `tdd`, `codebase-design` · `work-item` when building one backlog item (the item and the frozen sections it references are the pack) |
 | Fix Flow (any dev role) | `diagnosing-bugs` |
-| QA Engineer (Verify) | `code-review` |
+| QA Engineer (Verify) | `code-review` · `quality-report` when writing the QR's verdict rows |
 | PM, Security, Technical Writer | `writing-for-agents` |
-| PM | `backlog-item` when writing or changing a work item · `requirements-review` before the freeze, after the consistency sweep (§6) |
+| PM | `backlog-item` when writing or changing a work item · `requirements-review` before the freeze, after the consistency sweep (§6) · `quality-report` when shaping the QR's contract rows |
 | PM, Architect, Security introducing or changing a domain term or a hard-to-reverse decision | `domain-modeling` · `prototype` when a state model or workflow needs pushing through cases before the freeze |
 | UI/UX; PM researching interaction changes | `user-centered-design` for research, flows, Hi-Fi and variants; `writing-for-agents` for artifact-only edits |
 | Any role writing an artifact the engine must extract | `delimited-output` |
@@ -234,9 +234,11 @@ The full product cycle spans multiple repos in a fixed sequence. Each cycle can 
 | 6 | Spec | QA commits `*_QR.md` on release branch | `release/*` |
 | 7 | — | **Human Gate:** "Seal it" → PM tags `<product>-vX.Y.Z` on the release branch, dev repos tag the verified commit with the same name → DONE · "Not good enough" → back to step 3 | — |
 
+The QR has two parts, two owners, two branches: the PM shapes its contract rows (the release exit sets, the test matrix with its IDs, each row planned) on `development` before the freeze, and QA (Verify) writes its verdict rows (results, the verified commit, releasable or not) on `release/*` (`skills/spec/quality-report`).
+
 **Traceability is git alone — no reference file.** Dev→Spec: the release branch is the frozen spec; its fork point is the freeze, and only QA commits there (`hooks/commit-msg`), so nothing but the QR changes after it. Spec changes during a cycle go to `development` and reach the next line. Spec→Dev: `*_QR.md` on the release branch names the verified dev commit = evidence of delivery; each cycle adds a QR commit, so git history shows quality progression. Seal: the same tag name in spec and dev repos. Release is sealed **only by the human**.
 
-**The consistency sweep before the freeze.** Before the freeze commit the PM runs the consistency sweep over the spec-set: every ID that is referenced resolves to its owner document, every ID has one definition, and the backlog, the milestones and the QR rows agree (by reading and searching the IDs; `dudes item check` where the engine is installed). The PM freezes only with zero open findings. Where `dudes` is on PATH and the repo has the engine's profile (`.dudes/profile.json`), `hooks/commit-msg` runs the check on a PM commit that changes spec documents and refuses it with findings; elsewhere nothing enforces it, and the rule holds by discipline.
+**The consistency sweep before the freeze.** Before the freeze commit the PM runs the consistency sweep over the spec-set: every ID that is referenced resolves to its owner document, every ID has one definition, and the backlog, the milestones and the QR rows agree (by reading and searching the IDs; `dudes item check` where the engine is installed). The PM freezes only with zero open findings. Where the framework clone is built or `dudes` is on PATH, and the repo has the engine's profile (`.dudes/profile.json`), `hooks/commit-msg` runs the check on a PM commit that changes spec documents and refuses it with findings; elsewhere nothing enforces it, and the rule holds by discipline.
 
 ### One Repository
 
@@ -358,7 +360,7 @@ Before committing, every role **MUST verify it is on the correct branch** for th
 | **One repo** | QA Engineer (`*_QR.md` only) | `release/<product>-v<X.Y>`, cut from the verified commit (§6, *One Repository*) |
 | **One repo** | every other role | `development` |
 
-`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`; QR commits on `development` are refused. The same guard holds in a one-repo product: the hook finds it by the `Repo type` row of its `AGENTS.md` ("Spec and dev in one repo", the starter's wording), since its PRD sits under `spec/`, not at the root. QA's merge of `development` into the release branch (§6) is not refused.
+`hooks/commit-msg` enforces this (`make hooks`): on a spec repo's `release/*` only QA may commit, and only `*_QR.md`. The QR is the one file two roles write: the PM's contract rows go on `development` before the freeze, QA's verdict rows on `release/*`, and a QA commit of the QR on `development` is refused. The same guard holds in a one-repo product: the hook finds it by the `Repo type` row of its `AGENTS.md` ("Spec and dev in one repo", the starter's wording), since its PRD sits under `spec/`, not at the root. QA's merge of `development` into the release branch (§6) is not refused.
 
 ---
 

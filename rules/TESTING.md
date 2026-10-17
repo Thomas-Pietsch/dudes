@@ -54,7 +54,7 @@ test("user can log in with valid credentials", ...)
 
 ### Gate
 
-**Hard gate.** QA Author must commit a test suite before any dev role begins. Dev implementation without pre-existing tests = critical violation (`DUDES.md` §18).
+**Hard gate.** QA Author must commit a test suite before any dev role begins; the commit order in `git log` is the record, read at the review and the QR, and no hook judges which commit begins the dev work. Dev implementation without pre-existing tests = critical violation (`DUDES.md` §18).
 
 
 ---
