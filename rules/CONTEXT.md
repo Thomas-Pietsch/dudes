@@ -65,7 +65,7 @@ If the agent detects context loss (repeated reads of already-seen files, contrad
 
 ## Micro-Checkpoint (inline)
 
-For tasks under the SESSION_STATE.md threshold, the agent may append `<!-- CHECKPOINT: ... -->` to the active file (deleted before commit).
+For tasks under the SESSION_STATE.md threshold, the agent may append `<!-- CHECKPOINT: ... -->` to the active file (deleted before commit; `hooks/pre-commit` refuses a staged `<!-- CHECKPOINT`).
 
 ---
 

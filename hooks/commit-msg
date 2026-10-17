@@ -154,9 +154,10 @@ case "$BRANCH" in
       exit 1
     fi
     ;;
-  development|main)
-    # QR commits must go on release branches, not development
-    if echo "$MSG" | grep -qiE '(QR|quality.report)' && echo "$ROLE" | grep -q "QA Engineer"; then
+  development)
+    # QA's QR (its verdict) belongs on a release branch, not on development; the PM may shape the
+    # QR's contract here. Read from the staged paths, not the message.
+    if echo "$ROLE" | grep -q "QA Engineer" && git -c core.quotepath=off diff --cached --no-renames --name-only | grep -q '_QR\.md$'; then
       echo ""
       echo "❌ DUDES §12: QR artifacts belong on release/* branch, not $BRANCH."
       echo "   Fix: git checkout release/<product>-v<X.Y>, then commit."

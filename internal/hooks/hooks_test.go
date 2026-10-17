@@ -99,6 +99,9 @@ func TestCommitMsgBranchRoles(t *testing.T) {
 		{"dev repo release, Backend Developer, code", "dev", "release/x-v1.0", "main.go", "fix(x): a bug [🔹Backend Developer]", true},
 		{"dev repo release, QA, code", "dev", "release/x-v1.0", "main.go", "test(x): a case [🔹QA Engineer]", true},
 		{"development, QA, a QR commit", "dev", "development", "X_QR.md", "docs(qa): QR run 3 [🔹QA Engineer]", false},
+		{"development, QA, the QR without the word in the message", "dev", "development", "X_QR.md", "docs(qa): verdict of run 1 [🔹QA Engineer]", false},
+		{"development, QA, code with the word in the message", "dev", "development", "main.go", "test(x): cover the QR export [🔹QA Engineer]", true},
+		{"development, PM, the QR as the quality contract", "dev", "development", "X_QR.md", "docs(x): exit set of the release [🔹Product Manager]", true},
 		{"development, Backend Developer, code", "dev", "development", "main.go", "feat(x): a route [🔹Backend Developer]", true},
 		{"no role tag", "dev", "development", "main.go", "feat(x): a route", false},
 		// One repo (the starter's AGENTS.md names it; the PRD sits under spec/, not at the root)
@@ -234,7 +237,7 @@ func TestCommitMsgRolePaths(t *testing.T) {
 			git("config", "user.email", "dudes@test")
 			git("config", "user.name", "dudes-test")
 			git("config", "core.hooksPath", filepath.Join(ws, "no-hooks"))
-			git("checkout", "-q", "-b", "development")
+			git("checkout", "-q", "-b", branchOf(c.files))
 			write("README.md", "base\n")
 			git("add", "README.md")
 			if c.agents != "" {
@@ -272,6 +275,20 @@ func TestCommitMsgRolePaths(t *testing.T) {
 			}
 		})
 	}
+}
+
+// branchOf is the branch a commit of these files sits on: QA's QR belongs on a release branch (§12),
+// anything else on development.
+func branchOf(files []string) string {
+	if len(files) == 0 {
+		return "development"
+	}
+	for _, f := range files {
+		if !strings.HasSuffix(f, "_QR.md") {
+			return "development"
+		}
+	}
+	return "release/x-v1.0"
 }
 
 // TestCommitMsgSpecGate: a PM commit that stages a spec document runs `dudes item check` where a

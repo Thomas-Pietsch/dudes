@@ -1,6 +1,7 @@
 #!/bin/sh
-# The framework's own gate before its commits leave the machine: `make ci` (vet, tests, TODO WIP
-# limit, TREND consistency). The instance repos share this hooks directory and only get Git LFS.
+# The framework's own gate before its commits leave the machine: `make ci` (vet, conventions, tests,
+# TODO WIP limit and lanes, no private data, TREND consistency). The instance repos share this hooks
+# directory and only get Git LFS.
 top=$(git rev-parse --show-toplevel)
 refs=$(cat) # what is pushed: "<local ref> <local sha> <remote ref> <remote sha>" per line; git lfs reads it too
 if [ -f "$top/cmd/dudes/main.go" ] && [ -f "$top/Makefile" ]; then

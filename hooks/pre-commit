@@ -4,6 +4,7 @@
 #   1. documents state the current truth — no new change-note blocks (`> **Propagation …`) in
 #      Markdown; the why goes in the commit message (DUDES §violations). Removing old ones is fine.
 #      A QR states the current run only: no new run-history rows (rules/TESTING.md).
+#      No inline micro-checkpoint survives either: `<!-- CHECKPOINT` in staged Markdown (rules/CONTEXT.md).
 #   2. a commit stays inside the current work item's writable paths (F78, CORE §6).
 #      Scope: .dudes/writable in the work tree — one path pattern per line, `#` comments allowed.
 #      Shell patterns: `*` also matches `/`, so `app/*` covers everything below it.
@@ -21,6 +22,16 @@ if [ -n "$NOTES" ]; then
   echo "❌ DUDES: new change-note blocks in Markdown — documents state the current truth:"
   printf '%s\n' "$NOTES" | cut -c1-110 | sed 's/^+/   /'
   echo "   Fix: write the current state into the document; put the why in the commit message."
+  echo ""
+  exit 1
+fi
+
+CP=$(git diff --cached -U0 -- '*.md' | grep -E '^\+[^`]*<!-- CHECKPOINT')
+if [ -n "$CP" ]; then
+  echo ""
+  echo "❌ DUDES: a CHECKPOINT comment is staged — micro-checkpoints are deleted before the commit (rules/CONTEXT.md):"
+  printf '%s\n' "$CP" | cut -c1-110 | sed 's/^+/   /'
+  echo "   Fix: delete the comment, then commit."
   echo ""
   exit 1
 fi
