@@ -19,6 +19,10 @@ One series at a time: `make bench-models` refuses to start while another series 
 
 **Stop rule:** a series whose result repeats the last one changes no decision. Stop before the next and step back (`skills/framework/roadmap`). Do not chain series because the host is free. On 2026-10-14, six series on four models took almost 14 hours on the model host (832 run-minutes), which also runs the instance's CI. The two engine fixes and the regression guard all trace back to the first series. The others only confirmed where the models stop.
 
+## The model runs first
+
+Before a model enters any series, it answers the worker's request by itself on the model host: one `/api/chat` request built as Aider builds it (the whole-format system prompt and reminder, its two canned assistant turns, the level's read-only files and task, 10k to 15k prompt tokens), `think` as the series would run it, temperature 0, the series' `num_ctx` and `num_predict`. It passes when it stops by itself (`done_reason: stop`) within `num_predict` and about five minutes, with a complete file listing for every path the task names, no reasoning in the content and no placeholder lines. A model that fails gets one setting changed (`think`, `num_predict`, `num_ctx`, the vendor's sampling) and the smoke again, or is dropped; it never enters a series to find out. The smoke attributes a failure to the model and its settings, never to the engine. It compiles nothing, so it decides who runs, not who wins. Record it in `TREND.md` §1.1 beside the series it allows (the first: 2026-10-17). There is no goal for it yet; `TODO.md` lane `E1` names it.
+
 ## Read first
 
 `TREND.md` §1.1 (current rows), §4 **Paired worker trial** (the protocol this skill executes) and the Evidence register; `CORE.md` §2.4 (the micro-agent shape) and §10 (worker image). The model host and its connection are configuration (`ollama.base_url`), never the laptop the engine runs on.

@@ -185,6 +185,32 @@ It landed on the instance's `development` branch, plus a gofmt commit by DevOps;
 
 **Reading:** the harness is not the lever for slice 1 with this model; the trial's rule says so (Pi 0/3 or stopped). Aider stays the code worker until a successor is needed for its advisories; `E1` waits for a new model. A one-shot edit reply bounds a weak model better than an agent loop does. **Next check:** a new model that fits the box, on the slice-1 level first (3 runs, both harnesses only if it drives tools without repeating). Screened the same day (`skills/framework/bench`): no model released since 2026-10-01 fits the box with tool calls; older shapes not yet run here are Muse Glimmer 30B (dense, vendor SWE-bench Verified 76.0) and Laguna XS 2.1 (33B MoE, 3B active, 20 GB at Q4) — a pull is the human's call. Recheck in two weeks.
 
+**Two screened shapes on the slice-1 level, 2026-10-17** (`ph-001-s1`, reference check green; engine `9b37d38` for the first series, `d7d59bd` for the second; Aider 0.86.2 in the worker image, whole edit format, `num_ctx` 32768, `num_predict` 12288, `think: false`, temperature 0, 3 steps per task, 3 runs; the gate in the instance's ci image; Ollama 0.33.3 on the model host). The two models the screen of 2026-10-16 named, pulled on the human's call.
+
+| Model (Q4_K_M) | Outcome | What the replies held | Tokens in / out per step | Min / run |
+|---|---|---|---|---|
+| `muse-glimmer:30b` (27.9B dense) | 0/3 | 8 of 9 steps: one of Aider's own canned assistant turns echoed back, `Ok, I will use these files as references.` (10 tokens) or `Ok.` (2); 1 step: the format example's placeholder lines for dozens of invented files until the reply cap | 14k / 2–10, once cut | 3–22 |
+| `laguna-xs-2.1:q4_K_M` (33B MoE, 3B active) | 0/3 | 7 of 9 steps: the model's reasoning as prose in the reply, files rewritten while reasoning, cut at the reply cap (~11k out); Aider applies nothing from a cut reply. 2 steps stopped at 3.8k and 4.4k with six well-formed listings; the gate then failed on an unused variable and the model's own package test | 14k / 3.8–4.4k, else cut | 15–19 |
+
+- **`muse-glimmer:30b` repeats the last assistant turn.** Aider inserts two fixed assistant messages before the task; the model returned one of them and stopped. Its card lists only tool-loop harnesses. A one-shot file reply is outside its shape.
+- **`laguna-xs-2.1` thinks in the content.** Ollama honoured `think: false` (no thinking field, no tags); the model reasoned anyway and never stopped. Its vendor documents it thinking-on at temperature 0.7 to 1.0 for agentic coding. The failure is a settings mismatch before it is a capability result.
+- **The meter** recorded 0/0 tokens for every cut step; fixed after the series (`6e0e952`). The 0/0 entries in both result files are cap hits.
+- **The pattern repeats.** As on 2026-10-14 and 2026-10-16, a series found where a model stops and nothing about the engine. The stop rule applies.
+
+**Smoke test the same day, outside the engine** (one `/api/chat` request per model in the worker's exact shape: Aider's whole-format system prompt and reminder, its two canned turns, the level's four read-only files and task, 13.4k–15.4k prompt tokens; the generated Go was not compiled):
+
+| Model | `think` | `num_predict` | Stopped by itself | Out tokens | Seconds | Content |
+|---|---|---|---|---|---|---|
+| `gemma4:26b-64k` | off | 4096 | yes | 4008 | 86 | five complete listings, all in scope, byte-identical in two runs |
+| `qwen3.8:27b` | off | 12288 | yes | 4816 | 288 | six complete listings (one test file not asked for); at 4096 cut inside that test file |
+| `laguna-xs-2.1:q4_K_M` | on | 32768 | yes | 5042 (~1k trace in `message.thinking`) | 131 | six complete listings, clean content |
+| `laguna-xs-2.1:q4_K_M` | off | 4096 | no, cut | 4096 | 85 | five required files complete, cut in an extra test file; the first call returned a partial body |
+| `muse-glimmer:30b` | off and on | 4096–8192 | yes | 14–164 | 30–69 | the reminder echoed, a canned turn, or the example's placeholder body under the right path |
+
+**Reading:** the series measured the request shape and the settings, not the engine. Three models answer the worker's request by themselves; the two 0/3 series ran one of them with the wrong setting and one that cannot answer it at all. A correct five-file reply is 4k–5k tokens, so a reply cap below `num_predict` 12288 cuts a good answer. No outside Aider result exists for any model of this class (the Aider leaderboard's last update is 2025-11-20; the model-settings file names none of them), so the smoke is the evidence. The order changes: model first, then framework (`skills/framework/bench`, *The model runs first*).
+
+**Next check (model first):** (1) a model enters a series only after it passes the smoke with the settings the series will use. Today's passes: `qwen3.8:27b` (the baseline, `num_ctx` 65536), `gemma4:26b-64k` unchanged, `laguna-xs-2.1` with `think: true`, `num_predict` 32768, `num_ctx` 65536. (2) The one new configuration worth 3 runs on the slice-1 level is `laguna-xs-2.1` thinking-on, on the human's go; `gemma4:26b` keeps its reading (`Next check: none` unchanged) unless its vendor sampling passes a smoke. (3) `muse-glimmer:30b` is not tried again with Aider. (4) `qwen3-coder:30b` (19 GB, no thinking channel) is the one candidate not on the host; a pull is the human's call, then the smoke. (5) The market screen again in two weeks.
+
 ### 1.2 IDE hosts — judged (`skills/framework/models`)
 
 Which hosted model for which kind of work in the IDE hosts the humans and the role-play use today (Cursor, Claude Code). Judged from vendor sources and this workspace's own sessions, not measured; every hosted model receives the code and the specs (Pillar 2). Checked 2026-10-09.
@@ -412,6 +438,7 @@ Keep the test oracle outside the candidate's writable scope; verify it and the f
 | M1 | [Qwen model card](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct), named model; mutable page | Documented 30.5B / 3.3B active and native 262,144 context; not measured local residency or speed |
 | M2 | [Ollama context documentation](https://docs.ollama.com/context-length), mutable page | Documented VRAM-dependent defaults and memory growth with context; not a DUDES sizing result |
 | M3 | [Mistral Devstral announcement](https://mistral.ai/news/devstral/), Devstral-Small-2505 | Vendor-reported 46.8% SWE-bench Verified with OpenHands; not a harness comparison |
+| M4 | The model host's `/api/chat` replies of 2026-10-17 (one request per model in the worker's exact shape, §1.1 *Smoke test the same day*) | Measured: whether a model stops by itself with complete file listings and clean content under the worker's settings; not a code result (nothing compiled) and not a series |
 | L1 | [European Commission AI Act timetable](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai), mutable page | Official timetable: Annex III 2027-12-02, regulated-product high risk 2028-08-02; not product classification or a compliance opinion |
 | T1 | [Tetusa1/DoneGate README](https://github.com/Tetusa1/DoneGate/blob/1175d0c00b8a7811cc62dd2a400fae5e5ccb82a4/README.md) | Documented independent commit/check validation, worktrees and path leases; read paths are policy, not a filesystem sandbox |
 | T2 | [codemonkeying/lean-coder README](https://github.com/codemonkeying/lean-coder/blob/b37df2b8f2898e0d311ee505032e5c480f9edd49/README.md) | Documented 2,500-token core / 6,500-token all-tools test ceilings, optional tools and compaction; tests not run here |
