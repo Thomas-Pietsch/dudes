@@ -12,7 +12,7 @@
 #   the fixture's .dudes/dudes.json gets a pi block with its launch, the copy of the level's contract names
 #   pi for every implementation task, and .dudes/pi/ holds Pi's models.json and settings.json (Ollama's
 #   /v1 endpoint, temperature 0 as Aider, no compaction, Pi's own retry as Aider retries). Pi is a
-#   harness trial's second arm (TODO E1): after a step that made no tool call, or showed a scope or gate
+#   harness trial's second arm (TREND.md §1.1, 2026-10-16): after a step that made no tool call, or showed a scope or gate
 #   violation, a pi run stops, and so does the series after two failed pi runs.
 #   Tokens (both workers): the engine's worker events of the run, summed in `dudes status -json`
 #   (worker_calls, prompt_tokens, completion_tokens); a step's sent/received is the change since the last read.

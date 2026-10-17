@@ -6,9 +6,8 @@ Contributions are welcome: code, docs and measurements. The most useful thing an
 
 | What | Why it helps | How to start |
 |------|--------------|--------------|
-| **Bench results on other models or hardware** | Every number in [`TREND.md`](TREND.md) §1.1 comes from one model host. Outside runs are what the bench lacks most | [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md), then open a [bench result issue](https://github.com/Thomas-Pietsch/dudes/issues/new?template=bench-result.yml) with your result lines. Failures count |
+| **Bench results on other models or hardware** | Every number in [`TREND.md`](TREND.md) §1.1 comes from one model host. Outside runs are what the bench lacks most | [Your 27B in 10 minutes](docs/LOCAL_LLM_GUIDE.md), then open a [bench result issue](https://github.com/Thomas-Pietsch/dudes/issues/new?template=bench-result.yml) with your result lines. Failures count. `WORKER=pi` runs the second harness ([`bench/README.md`](bench/README.md)); the one paired trial so far is `TREND.md` §1.1, 2026-10-16, Pi stopped |
 | **A non-Go test-evidence adapter**, JUnit XML first | The evidence gate reads per-test results from `go test -v` output (`internal/testrun`). An adapter that turns JUnit XML into the same pass, fail and skip results lets the gate read pytest, Jest, JUnit and others | Open an issue with the format and a sample first. The engine uses the Go standard library only (`go.mod` has no dependencies) |
-| **The Pi-versus-Aider harness trial** | Aider is the incumbent code worker; Pi has an adapter (F55, a feature ID in [`FEATURES.md`](FEATURES.md)). Which one gets the same model further on the same task? | `TODO.md` (Next, "Harness trial") says what is wanted and [`TREND.md`](TREND.md) §4 (paired trial) how to compare. The bench script runs Aider only, so the first step is making the harness a setting: open an issue to agree the design |
 
 ## How to contribute
 

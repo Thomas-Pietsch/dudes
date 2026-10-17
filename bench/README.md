@@ -17,7 +17,7 @@ make bench-models WORKER=pi MODELS=… OLLAMA=…                               
 | L2 | `BL-002` Version order | A package whose behaviour lives in a TA reference (`ALG-01`). The worker reads it through the item pack. Three criteria |
 | L3 | `BL-003` Latest release | Several constraints in one task across two packages: a new package (`release`, TA `ALG-02`) on top of an existing one (`semver`, committed from `L3/testdata/base/`) that gains a function and must keep its behaviour. The hidden test replays L2's cases |
 
-L4 (an item in slices, red first) follows. An instance trial (ended after its fifth slice, `TREND.md` §1.1) shows what it must hold: a cross-toolchain slice and a measure of whether a failed pass leaves the tree worse. A level adds its own TA section and release to the shared spec set, so the packs of the levels before it stay unchanged.
+L4 and up are external levels: an item in slices, red first, built from a sealed real item in the instance that owns it ([External levels](#external-levels) below; the first ran 2026-10-14, `TREND.md` §1.1). An instance trial (ended after its fifth slice, `TREND.md` §1.1) shows what it must hold: a cross-toolchain slice and a measure of whether a failed pass leaves the tree worse. A level adds its own TA section and release to the shared spec set, so the packs of the levels before it stay unchanged.
 
 **External levels.** A level built from a real product lives in the instance that owns its specs and code, never here. Name its directory in `LEVELS` (an absolute path; `make bench-models … LEVELS=C:/Coding/<instance>/bench/<level>`). Its name in result lines and logs is the directory's basename. See [External levels](#external-levels).
 

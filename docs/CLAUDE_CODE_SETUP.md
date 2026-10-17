@@ -30,7 +30,7 @@ printf '{\n  "claudeMdExcludes": ["**/.dudes-framework/CLAUDE.md", "**/.dudes-fr
 printf 'SESSION_STATE.md\n' >> .gitignore
 ```
 
-- You have a `Makefile` already? Skip its line and add the starter's `test` goal to yours. Give every goal a `## what it does` comment: `make help` lists them, and that list is all the agent knows about your commands.
+- You have a `Makefile` already? Skip its line and add the starter's `test` and `check` goals and the `TEST`, `FMT`, `LINT` variables to yours. Give every goal a `## what it does` comment: `make help` lists them, and that list is all the agent knows about your commands.
 - `.claude/settings.json` keeps the clone's own entry out of the session. When the agent reads a rule file, Claude Code also loads that folder's `CLAUDE.md` ("nested traversal"; the `InstructionsLoaded` hook shows it). The clone's `CLAUDE.md` points to the DevOps entry of DUDES, which is not a role in your repo. Merge the line if you have a `.claude/settings.json`.
 - `SESSION_STATE.md` is the agent's scratchpad (`rules/CONTEXT.md`), never committed.
 
@@ -39,7 +39,7 @@ printf 'SESSION_STATE.md\n' >> .gitignore
 | Where | Setting | Leave it when |
 |---|---|---|
 | `AGENTS.md`, table under *Framework Requirement* | `DUDES`: the DUDES clone, relative to `AGENTS.md` | You followed step 1 (`.dudes-framework`) |
-| `Makefile` | `TEST`: the command that runs all your tests | You want QA (Author) to set it for the stack the TA names |
+| `Makefile` | `TEST`, `FMT`, `LINT`: the commands that run all your tests, the format check and the static checks; a tool you do not use: `true`, on purpose | You want QA (Author) to set it for the stack the TA names |
 
 Then commit: `git add -A && git commit -m "chore: DUDES starter [🔹human]"`.
 

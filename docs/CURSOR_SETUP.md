@@ -30,14 +30,14 @@ cp .dudes-framework/templates/product/Makefile .
 printf 'SESSION_STATE.md\n' >> .gitignore
 ```
 
-You have a `Makefile` already? Skip the second line and add its `test` goal to yours. Give every goal a `## what it does` comment: `make help` lists them, and that list is all the agent knows about your commands. `SESSION_STATE.md` is the agent's scratchpad (`rules/CONTEXT.md`), never committed. The starter's `CLAUDE.md` is for Claude Code; Cursor does not need it.
+You have a `Makefile` already? Skip the second line and add its `test` and `check` goals and the `TEST`, `FMT`, `LINT` variables to yours. Give every goal a `## what it does` comment: `make help` lists them, and that list is all the agent knows about your commands. `SESSION_STATE.md` is the agent's scratchpad (`rules/CONTEXT.md`), never committed. The starter's `CLAUDE.md` is for Claude Code; Cursor does not need it.
 
 ## 3. Set the one path and the test command
 
 | Where | Setting | Leave it when |
 |---|---|---|
 | `AGENTS.md`, table under *Framework Requirement* | `DUDES`: the DUDES clone, relative to `AGENTS.md` | You followed step 1 (`.dudes-framework`) |
-| `Makefile` | `TEST`: the command that runs all your tests | You want QA (Author) to set it for the stack the TA names |
+| `Makefile` | `TEST`, `FMT`, `LINT`: the commands that run all your tests, the format check and the static checks; a tool you do not use: `true`, on purpose | You want QA (Author) to set it for the stack the TA names |
 
 Then commit: `git add -A && git commit -m "chore: DUDES starter [🔹human]"`.
 

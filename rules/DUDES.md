@@ -154,7 +154,7 @@ Every role executes these tasks **in this exact order** — no skipping, no reor
 
 **Step 6 is a blocking gate.** A role that produced files cannot execute step 7 without a commit. Uncommitted handoff = critical framework violation. The commit IS the deliverable — it proves the role did its job and makes it independently traceable via `git log --grep='🔹<Role>'`.
 
-**Step 7 is the handoff.** No separate "Handoff Protocol" exists — it's step 7 of the common task sequence.
+**Step 7 is the handoff.** §9 restates it for quick reference.
 
 ### Role Isolation Mandate
 

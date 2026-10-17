@@ -42,7 +42,7 @@ Flow: Feature
 
 ## 2. The PM writes the spec
 
-It read the sample's PRD, TA, backlog and QR as the format, wrote `spec/BOOKSHELF_PRD.md`, `_TA.md` and `_BACKLOG.md`, and committed them: `feat(spec): freeze Bookshelf R0.1 PRD, TA and backlog [🔹PM & Software Architect]`. That commit is the freeze: a spec change after it starts a new cycle.
+It read the sample's PRD (the requirements), TA (the technical architecture), backlog and QR (the QA report) as the format, wrote `spec/BOOKSHELF_PRD.md`, `_TA.md` and `_BACKLOG.md`, and committed them: `feat(spec): freeze Bookshelf R0.1 PRD, TA and backlog [🔹PM & Software Architect]`. That commit is the freeze: a spec change after it starts a new cycle.
 
 Open the backlog. The work item is the unit of work, and its criteria cite the PRD and the TA by ID, as in [`examples/sample/pm/BOOKSHELF_BACKLOG.md`](../examples/sample/pm/BOOKSHELF_BACKLOG.md):
 

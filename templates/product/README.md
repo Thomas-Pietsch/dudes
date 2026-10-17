@@ -31,4 +31,4 @@ The guides give each host's checks and fixes: [Claude Code](../../docs/CLAUDE_CO
 | Commit rules enforced by git | `git config core.hooksPath .dudes-framework/hooks`. Then a commit without a `[🔹Role]` tag is refused, and so is a QR commit on `development`. On `release/*` only QA commits, and only the QR (§12) |
 | A newer DUDES | `git submodule update --remote .dudes-framework`, read what changed in `rules/`, commit the new pointer |
 
-The rules and this `AGENTS.md` are about 47 KB of text, read at the start of every session.
+The rules and this `AGENTS.md` are about 50 KB of text, read at the start of every session.
