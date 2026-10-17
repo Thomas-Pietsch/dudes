@@ -150,13 +150,35 @@ func Run(ctx context.Context, workspace, message string, cfg Config) (string, er
 // with prices. The console may wrap it, so any space between the words may be a line break.
 var tokensLine = regexp.MustCompile(`Tokens:\s+([0-9][0-9.]*k?)\s+sent,(?:\s+[0-9][0-9.]*k?\s+cache\s+(?:write|hit),)*\s+([0-9][0-9.]*k?)\s+received`)
 
+// limitBlock is what Aider prints in place of its "Tokens:" line when a reply hit a token limit:
+// "Input tokens: ~24,638 of 262,144" and "Output tokens: ~11,183 of 262,144", each line maybe quoted
+// with "> " in the chat history.
+var limitBlock = regexp.MustCompile(`has hit a token limit!(?s:.*?)Input tokens:\s+~?([0-9][0-9,]*)(?s:.*?)Output tokens:\s+~?([0-9][0-9,]*)`)
+
 // Usage is Aider's own report of what a run's model calls cost, summed over its "Tokens:" lines: the
 // tokens sent (the prompts) and received (the replies). Aider rounds each figure to 0.1k under 10k
-// and to 1k above. ok=false: the output holds no report.
+// and to 1k above. A call cut off at a token limit prints no "Tokens:" line, only its limit block;
+// that block counts unless a "Tokens:" line follows it for the same call. ok=false: the output holds
+// no report.
 func Usage(out string) (sent, received int, ok bool) {
 	for _, m := range tokensLine.FindAllStringSubmatch(out, -1) {
 		s, sok := tokenCount(m[1])
 		r, rok := tokenCount(m[2])
+		if !sok || !rok {
+			continue
+		}
+		sent, received, ok = sent+s, received+r, true
+	}
+	for _, loc := range limitBlock.FindAllStringSubmatchIndex(out, -1) {
+		rest := out[loc[1]:]
+		if next := strings.Index(rest, "has hit a token limit"); next >= 0 {
+			rest = rest[:next]
+		}
+		if tokensLine.MatchString(rest) {
+			continue
+		}
+		s, sok := tokenCount(strings.ReplaceAll(out[loc[2]:loc[3]], ",", ""))
+		r, rok := tokenCount(strings.ReplaceAll(out[loc[4]:loc[5]], ",", ""))
 		if !sok || !rok {
 			continue
 		}

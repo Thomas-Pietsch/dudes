@@ -330,6 +330,9 @@ func TestUsage(t *testing.T) {
 		{"cache figures and a cost", "Tokens: 12k sent, 1.2k cache write, 3.4k cache hit, 1.3k received. Cost: $0.01 message, $0.02 session.\n", 12000, 1300, true},
 		{"wrapped by the console", "Tokens: 12k sent, 1.2k cache write, 3.4k cache hit,\n1.3k received.\n", 12000, 1300, true},
 		{"the chat history's quote", "> Tokens: 950 sent, 12 received.\n", 950, 12, true},
+		{"a reply cut at a token limit", "> Model ollama_chat/m has hit a token limit!  \n> Token counts below are approximate.  \n>  \n> Input tokens: ~24,638 of 262,144  \n> Output tokens: ~11,183 of 262,144  \n", 24638, 11183, true},
+		{"a finished call, then a cut one", "Tokens: 9.8k sent, 1.2k received.\nModel m has hit a token limit!\nInput tokens: ~24,523 of 32,768\nOutput tokens: ~11,068 of 32,768\n", 34323, 12268, true},
+		{"a cut call with its own Tokens line", "Model m has hit a token limit!\nInput tokens: ~27,375 of 32,768\nOutput tokens: ~29 of 32,768\nTokens: 27k sent, 29 received.\n", 27000, 29, true},
 		{"no report", "Applied edit to semver/semver.go\n", 0, 0, false},
 		{"the input's tokens, not a report", "> Input tokens: ~27,375 of 32,768\n", 0, 0, false},
 	} {
